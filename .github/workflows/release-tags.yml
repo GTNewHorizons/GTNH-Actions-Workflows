@@ -41,6 +41,8 @@ jobs:
 
       - name: Release under current tag
         run: gh release create '${RELEASE_VERSION}' --generate-notes ./build/libs/*.jar
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to Maven
         run: ./gradlew publish
