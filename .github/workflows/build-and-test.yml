@@ -10,8 +10,15 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout mod repo
+      uses: actions/checkout@v2
       with:
+        fetch-depth: 0
+    - name: Checkout workflows repo
+      uses: actions/checkout@v3
+      with:
+        repository: GTNewHorizons/GTNH-Actions-Workflows
+        path: .gtnh-workflows
         fetch-depth: 0
 
     - name: Set up JDK 8
@@ -38,5 +45,5 @@ jobs:
 
     - name: Test no errors reported during server run
       run: |
-        chmod +x .github/scripts/test_no_error_reports
-        .github/scripts/test_no_error_reports
+        chmod +x .gtnh-workflows/scripts/test_no_error_reports
+        .gtnh-workflows/scripts/test_no_error_reports
