@@ -42,14 +42,6 @@ jobs:
         mkdir run
         echo "eula=true" > run/eula.txt
         timeout 90 ./gradlew runServer 2>&1 | tee -a server.log || true
-      if: INPUT_TIMEOUT == 0
-
-    - name: Run server for ${{ INPUT_TIMEOUT / 60 }} minutes
-      run: |
-        mkdir run
-        echo "eula=true" > run/eula.txt
-        timeout ${{ INPUT_TIMEOUT }} ./gradlew runServer 2>&1 | tee -a server.log || true
-      if: INPUT_TIMEOUT != 0
 
     - name: Test no errors reported during server run
       run: |
