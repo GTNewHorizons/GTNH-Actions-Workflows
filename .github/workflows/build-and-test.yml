@@ -5,6 +5,12 @@ name: Build and test
 
 on:
   workflow_call:
+    inputs:
+      timeout:
+        description: 'Timeout for runServer (seconds)'
+        required: false
+        default: 90
+        type: number
 
 jobs:
   build-and-test:
@@ -37,11 +43,11 @@ jobs:
     - name: Build the mod
       run: ./gradlew build
 
-    - name: Run server for 1.5 minutes
+    - name: Run server for ${{ inputs.timeout }} seconds
       run: |
         mkdir run
         echo "eula=true" > run/eula.txt
-        timeout 90 ./gradlew runServer 2>&1 | tee -a server.log || true
+        timeout ${{ inputs.timeout }} ./gradlew runServer 2>&1 | tee -a server.log || true
 
     - name: Test no errors reported during server run
       run: |
