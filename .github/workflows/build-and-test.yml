@@ -11,6 +11,11 @@ on:
         required: false
         default: 90
         type: number
+      workspace:
+        description: 'setupCIWorkspace/setupDecompWorkspace'
+        required: false
+        default: "setupCIWorkspace"
+        type: string
 
 jobs:
   build-and-test:
@@ -38,7 +43,7 @@ jobs:
       run: chmod +x gradlew
 
     - name: Setup the workspace
-      run: ./gradlew setupCIWorkspace
+      run: ./gradlew ${{ inputs.workspace }}
 
     - name: Build the mod
       run: ./gradlew build
