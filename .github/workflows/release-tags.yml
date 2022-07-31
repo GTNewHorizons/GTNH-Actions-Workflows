@@ -10,6 +10,12 @@ on:
         required: false
       MAVEN_PASSWORD:
         required: false
+    inputs:
+      workspace:
+        description: 'setupCIWorkspace/setupDecompWorkspace'
+        required: false
+        default: "setupCIWorkspace"
+        type: string
 
 jobs:
   build:
@@ -34,7 +40,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Setup the workspace
-        run: ./gradlew setupCIWorkspace
+        run: ./gradlew ${{ inputs.workspace }}
 
       - name: Build the mod
         run: ./gradlew build
