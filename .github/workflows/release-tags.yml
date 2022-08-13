@@ -45,13 +45,23 @@ jobs:
       - name: Build the mod
         run: ./gradlew build
 
+      # Continue on error in the following steps to make sure releases still get made even if one of the methods fails
+
+      - name: Delete old release if it already exists
+        run: gh release delete --yes "${RELEASE_VERSION}"
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Release under current tag
         run: gh release create "${RELEASE_VERSION}" --generate-notes ./build/libs/*.jar
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to Maven
         run: ./gradlew publish
+        continue-on-error: true
         env:
           MAVEN_USER: ${{ secrets.MAVEN_USER }}
           MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
