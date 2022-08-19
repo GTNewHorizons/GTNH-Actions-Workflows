@@ -40,10 +40,10 @@ jobs:
         run: chmod +x gradlew
 
       - name: Setup the workspace
-        run: ./gradlew ${{ inputs.workspace }}
+        run: ./gradlew --info --stacktrace ${{ inputs.workspace }}
 
       - name: Build the mod
-        run: ./gradlew build
+        run: ./gradlew --info --stacktrace build
 
       # Continue on error in the following steps to make sure releases still get made even if one of the methods fails
 
@@ -60,7 +60,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to Maven
-        run: ./gradlew publish
+        run: ./gradlew --info --stacktrace publish
         continue-on-error: true
         env:
           MAVEN_USER: ${{ secrets.MAVEN_USER }}
