@@ -78,14 +78,14 @@ jobs:
         FIXED_BRANCH: ${{ github.head_ref }}-spotless-fixes
 
     - name: Run server for ${{ inputs.timeout }} seconds
+      if: ${{ !inputs.client-only }}
       run: |
         mkdir run
         echo "eula=true" > run/eula.txt
         timeout ${{ inputs.timeout }} ./gradlew --info --stacktrace runServer 2>&1 | tee -a server.log || true
-      if: ${{ !inputs.client-only }}
 
     - name: Test no errors reported during server run
+      if: ${{ !inputs.client-only }}
       run: |
         chmod +x .gtnh-workflows/scripts/test_no_error_reports
         .gtnh-workflows/scripts/test_no_error_reports
-      if: ${{ !inputs.client-only }}
