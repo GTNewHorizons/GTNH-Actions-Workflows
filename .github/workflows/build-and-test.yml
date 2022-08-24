@@ -88,3 +88,4 @@ jobs:
       run: |
         chmod +x .gtnh-workflows/scripts/test_no_error_reports
         .gtnh-workflows/scripts/test_no_error_reports
+      if: ${{ !inputs.client-only }}
