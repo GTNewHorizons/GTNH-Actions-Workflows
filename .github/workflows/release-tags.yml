@@ -59,6 +59,22 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Save changelog
+        run: gh release view --json body --jq .body > CHANGELOG.md
+        continue-on-error: true
+
+      - name: Publish to Modrinth
+        run: ./gradlew --info --stacktrace modrinth
+        continue-on-error: true
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+
+      - name: Publish to CurseForge
+        run: ./gradlew --info --stacktrace curseforge
+        continue-on-error: true
+        env:
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+
       - name: Publish to Maven
         run: ./gradlew --info --stacktrace publish
         continue-on-error: true
