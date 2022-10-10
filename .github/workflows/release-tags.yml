@@ -64,7 +64,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Save changelog
-        run: gh release view --json body --jq .body > CHANGELOG.md
+        run: |
+          export "CHANGELOG_FILE=$(mktemp --suffix=.md)"
+          echo "CHANGELOG_FILE=${CHANGELOG_FILE}" >> $GITHUB_ENV
+          gh release view --json body --jq .body > "${CHANGELOG_FILE}"
+          cat "${CHANGELOG_FILE}"
+        shell: bash
         continue-on-error: true
 
       - name: Publish to Maven, Modrinth and CurseForge
