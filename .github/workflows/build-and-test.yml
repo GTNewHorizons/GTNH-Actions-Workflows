@@ -55,7 +55,7 @@ jobs:
       run: ./gradlew --info --stacktrace build
 
     - name: Attempt to make a PR fixing spotless errors
-      if: ${{ failure() && steps.build_mod.conclusion == 'failure' && github.event_name == 'pull_request' }}
+      if: ${{ failure() && steps.build_mod.conclusion == 'failure' && github.event_name == 'pull_request' && !github.event.pull_request.draft }}
       run: |
         ./gradlew --info --stacktrace spotlessApply || exit 1
         git diff --exit-code && exit 1
