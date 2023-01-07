@@ -80,7 +80,7 @@ jobs:
     - name: Run server for ${{ inputs.timeout }} seconds
       if: ${{ !inputs.client-only }}
       run: |
-        mkdir run
+        mkdir -p run
         echo "eula=true" > run/eula.txt
         echo "stop" > run/stop.txt
         timeout ${{ inputs.timeout }} ./gradlew --info --stacktrace runServer 2>&1 < run/stop.txt | tee -a server.log || true
