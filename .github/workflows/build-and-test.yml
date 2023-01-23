@@ -50,13 +50,24 @@ jobs:
     - name: Setup the workspace
       run: ./gradlew --info --stacktrace ${{ inputs.workspace }}
 
-    - name: Build the mod
+    - name: Compile the mod
+      run: ./gradlew --info --stacktrace assemble jar reobfJar
+
+    - name: Attach compilation artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-libs
+        path: build/libs/
+        retention-days: 31
+
+    - name: Run post-build checks
       id: build_mod
       run: ./gradlew --info --stacktrace build
 
     - name: Attempt to make a PR fixing spotless errors
       if: ${{ failure() && steps.build_mod.conclusion == 'failure' && github.event_name == 'pull_request' && !github.event.pull_request.draft }}
       run: |
+        git reset --hard "${PR_BRANCH}"
         ./gradlew --info --stacktrace spotlessApply || exit 1
         git diff --exit-code && exit 1
         git config user.name "GitHub GTNH Actions"
