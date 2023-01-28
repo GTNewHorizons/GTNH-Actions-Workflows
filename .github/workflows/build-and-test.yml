@@ -69,7 +69,8 @@ jobs:
     - name: Attempt to make a PR fixing spotless errors
       if: ${{ failure() && steps.build_mod.conclusion == 'failure' && github.event_name == 'pull_request' && !github.event.pull_request.draft }}
       run: |
-        git reset --hard "${PR_BRANCH}"
+        git reset --hard
+        git checkout "${PR_BRANCH}"
         ./gradlew --info --stacktrace spotlessApply || exit 1
         git diff --exit-code && exit 1
         git config user.name "GitHub GTNH Actions"
