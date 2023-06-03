@@ -49,10 +49,10 @@ jobs:
         run: chmod +x gradlew
 
       - name: Setup the workspace
-        run: ./gradlew --info --stacktrace ${{ inputs.workspace }}
+        run: ./gradlew --build-cache --info --stacktrace ${{ inputs.workspace }}
 
       - name: Build the mod
-        run: ./gradlew --info --stacktrace build
+        run: ./gradlew --build-cache --info --stacktrace build
 
       # Continue on error in the following steps to make sure releases still get made even if one of the methods fails
 
@@ -78,7 +78,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to Maven, Modrinth and CurseForge
-        run: ./gradlew --info --stacktrace build publish
+        run: ./gradlew --build-cache --info --stacktrace build publish
         continue-on-error: true
         env:
           MAVEN_USER: ${{ secrets.MAVEN_USER }}

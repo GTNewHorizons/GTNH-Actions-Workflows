@@ -53,10 +53,10 @@ jobs:
       run: chmod +x gradlew
 
     - name: Setup the workspace
-      run: ./gradlew --info --stacktrace ${{ inputs.workspace }}
+      run: ./gradlew --build-cache --info --stacktrace ${{ inputs.workspace }}
 
     - name: Compile the mod
-      run: ./gradlew --info --stacktrace assemble
+      run: ./gradlew --build-cache --info --stacktrace assemble
 
     - name: Attach compilation artifacts
       uses: actions/upload-artifact@v3
@@ -67,14 +67,14 @@ jobs:
 
     - name: Run post-build checks
       id: build_mod
-      run: ./gradlew --info --stacktrace build
+      run: ./gradlew --build-cache --info --stacktrace build
 
     - name: Attempt to make a PR fixing spotless errors
       if: ${{ failure() && steps.build_mod.conclusion == 'failure' && github.event_name == 'pull_request' && !github.event.pull_request.draft }}
       run: |
         git reset --hard
         git checkout "${PR_BRANCH}"
-        ./gradlew --info --stacktrace spotlessApply || exit 1
+        ./gradlew --build-cache --info --stacktrace spotlessApply || exit 1
         git diff --exit-code && exit 1
         git config user.name "GitHub GTNH Actions"
         git config user.email "<>"
@@ -100,7 +100,7 @@ jobs:
         mkdir -p run
         echo "eula=true" > run/eula.txt
         echo "stop" > run/stop.txt
-        timeout ${{ inputs.timeout }} ./gradlew --info --stacktrace runServer 2>&1 < run/stop.txt | tee -a server.log || true
+        timeout ${{ inputs.timeout }} ./gradlew --build-cache --info --stacktrace runServer 2>&1 < run/stop.txt | tee -a server.log || true
 
     - name: Test no errors reported during server run
       if: ${{ !inputs.client-only }}
