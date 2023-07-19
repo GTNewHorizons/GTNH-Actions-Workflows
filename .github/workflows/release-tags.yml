@@ -64,12 +64,17 @@ jobs:
 
       - name: Release under current tag
         run: |
+          PRERELEASE=false
+          if [[ "${RELEASE_VERSION}" =~ "-pre" ]]; then
+            PRERELEASE=true
+          fi
           export "CHANGELOG_FILE=$(mktemp --suffix=.md)"
           echo "CHANGELOG_FILE=${CHANGELOG_FILE}" >> $GITHUB_ENV
           gh api --method POST -H "Accept: application/vnd.github+json" \
             "/repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
             -f tag_name="${RELEASE_VERSION}" \
-            --jq ".body" > "${CHANGELOG_FILE}"
+            --jq ".body" > "${CHANGELOG_FILE}" \
+            -f prerelease="$PRERELEASE"
           cat "${CHANGELOG_FILE}"
           gh release create "${RELEASE_VERSION}" -F "${CHANGELOG_FILE}" ./build/libs/*.jar
         shell: bash
