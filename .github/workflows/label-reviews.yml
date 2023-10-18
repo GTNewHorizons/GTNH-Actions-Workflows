@@ -2,18 +2,8 @@
 name: Label Reviews
 # Trigger the workflow on pull requests
 on:
-  pull_request:
-    types:
-      - opened
-      - reopened
-      - synchronize
-      - labeled
-      - unlabeled
-  pull_request_review:
-    types:
-      - submitted
-      - edited
-      - dismissed
+  workflow_call:
+
 jobs:
   require-reviewers:
     # Optional: skip check if no relevant label is present
