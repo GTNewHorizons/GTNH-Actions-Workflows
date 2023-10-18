@@ -1,0 +1,36 @@
+# This workflow will set a number or reviewers depending on the labels
+name: Label Reviews
+# Trigger the workflow on pull requests
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
+      - unlabeled
+  pull_request_review:
+    types:
+      - submitted
+      - edited
+      - dismissed
+jobs:
+  require-reviewers:
+    # Optional: skip check if no relevant label is present
+    # This needs to be kept in sync with the labels being checked
+    # These don't need to hold the entire label name and aren't case sensitive
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'Affects Balance') || contains(github.event.pull_request.labels.*.name, 'ongoing freeze') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label requires reviews
+        uses: GTNewHorizons/label-requires-reviews-action@master
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # define which PR labels require how many aprroving reviewers
+          # Case sensitive and needs the full label name.
+          rules_yaml: |-
+            Affects Balance: 3 
+            ongoing freeze - don't merge: 99
+            
