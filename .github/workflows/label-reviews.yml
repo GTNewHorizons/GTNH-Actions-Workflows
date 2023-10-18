@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Label requires reviews
-        uses: BlueWeabo/label-requires-reviews-action@master
+        uses: GTNewHorizons/label-requires-reviews-action@master
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
