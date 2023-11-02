@@ -76,7 +76,7 @@ jobs:
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: ${{ !contains(github.event.head_commit.message, '[no github]') }}
+        if: ${{ !contains(github.event.head_commit.message, '[snapshot]') }}
 
       - name: Publish to Maven
         run: ./gradlew --build-cache --info --stacktrace build publish
