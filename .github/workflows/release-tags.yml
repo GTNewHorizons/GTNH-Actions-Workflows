@@ -66,7 +66,7 @@ jobs:
       - name: Release under current tag
         run: |
           PRERELEASE=""
-          if [[ $SNAPSHOT ]]; then
+          if [[ "$SNAPSHOT" == "true" ]]; then
             PRERELEASE="--prerelease"
           fi
           export "CHANGELOG_FILE=$(mktemp --suffix=.md)"
