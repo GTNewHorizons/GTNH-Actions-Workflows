@@ -28,9 +28,10 @@ jobs:
       VERSION: ${{ github.ref_name }}
       RELEASE_VERSION: ${{ github.ref_name }}
       SNAPSHOT: ${{ endsWith(github.ref_name, '-snapshot') || contains(github.event.head_commit.message, '[snapshot]') }}
+      MAVEN_PUBLISHING_URL: ${{ vars.MAVEN_PUBLISHING_URL || 'https://nexus.gtnewhorizons.com/repository/releases/' }}
     steps:
       - name: Checkout mod repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 32
 
@@ -38,7 +39,7 @@ jobs:
         uses: gradle/wrapper-validation-action@v1
 
       - name: Set up JDK 8 and 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: |
             8
@@ -50,10 +51,10 @@ jobs:
         run: chmod +x gradlew
 
       - name: Setup the workspace
-        run: ./gradlew --build-cache --info --stacktrace ${{ inputs.workspace }}
+        run: ./gradlew --build-cache --info --stacktrace -PmavenPublishUrl='${{ env.MAVEN_PUBLISHING_URL }}' ${{ inputs.workspace }}
 
       - name: Build the mod
-        run: ./gradlew --build-cache --info --stacktrace build
+        run: ./gradlew --build-cache --info --stacktrace -PmavenPublishUrl='${{ env.MAVEN_PUBLISHING_URL }}' build
 
       # Continue on error in the following steps to make sure releases still get made even if one of the methods fails
 
@@ -83,7 +84,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to Maven
-        run: ./gradlew --build-cache --info --stacktrace build publish
+        run: ./gradlew --build-cache --info --stacktrace -PmavenPublishUrl='${{ env.MAVEN_PUBLISHING_URL }}' build publish
         continue-on-error: true
         env:
           MAVEN_USER: ${{ secrets.MAVEN_USER }}
@@ -91,7 +92,7 @@ jobs:
         if: ${{ env.MAVEN_USER != '' }}
 
       - name: Publish to Modrinth and CurseForge
-        run: ./gradlew --build-cache --info --stacktrace build publish
+        run: ./gradlew --build-cache --info --stacktrace -PmavenPublishUrl='${{ env.MAVEN_PUBLISHING_URL }}' build publish
         continue-on-error: true
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
