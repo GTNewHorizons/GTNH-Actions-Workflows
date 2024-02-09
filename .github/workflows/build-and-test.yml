@@ -38,7 +38,7 @@ jobs:
         fetch-depth: 0
 
     - name: Validate gradle wrapper checksum
-      uses: gradle/wrapper-validation-action@v1
+      uses: gradle/wrapper-validation-action@v2
 
     - name: Set up JDK versions
       uses: actions/setup-java@v4
