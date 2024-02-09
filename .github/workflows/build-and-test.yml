@@ -29,7 +29,7 @@ jobs:
     - name: Install Ubuntu dependencies
       run: |
         sudo apt-get update -y
-        sudo apt-get install -y mesa-utils xvfb
+        sudo apt-get install -y mesa-utils xvfb x11-xserver-utils
     - name: Checkout mod repo
       uses: actions/checkout@v4
       with:
