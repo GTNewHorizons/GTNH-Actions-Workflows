@@ -26,6 +26,10 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
+    - name: Install Ubuntu dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y mesa-utils xvfb x11-xserver-utils
     - name: Checkout mod repo
       uses: actions/checkout@v4
       with:
@@ -38,13 +42,14 @@ jobs:
         fetch-depth: 0
 
     - name: Validate gradle wrapper checksum
-      uses: gradle/wrapper-validation-action@v1
+      uses: gradle/wrapper-validation-action@v2
 
-    - name: Set up JDK 8 and 17
+    - name: Set up JDK versions
       uses: actions/setup-java@v4
       with:
         java-version: |
           8
+          21
           17
         distribution: 'zulu'
         cache: gradle
@@ -61,13 +66,22 @@ jobs:
     - name: Attach compilation artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: build-libs
+        name: ${{ github.repository_id }}-build-libs
         path: build/libs/
         retention-days: 31
 
     - name: Run post-build checks
       id: build_mod
-      run: ./gradlew --build-cache --info --stacktrace build
+      run: xvfb-run --server-args="-screen 0 1366x768x24" ./gradlew --build-cache --info --stacktrace build
+
+    - name: Attach gradle reports
+      if: failure() && steps.build_mod.conclusion == 'failure'
+      uses: actions/upload-artifact@v4
+      continue-on-error: true
+      with:
+        name: ${{ github.repository_id }}-reports
+        path: build/reports/
+        retention-days: 31
 
     - name: Attempt to make a PR fixing spotless errors
       if: ${{ failure() && steps.build_mod.conclusion == 'failure' && github.event_name == 'pull_request' && !github.event.pull_request.draft }}

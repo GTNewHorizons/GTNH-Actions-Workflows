@@ -36,13 +36,14 @@ jobs:
           fetch-depth: 32
 
       - name: Validate gradle wrapper checksum
-        uses: gradle/wrapper-validation-action@v1
+        uses: gradle/wrapper-validation-action@v2
 
-      - name: Set up JDK 8 and 17
+      - name: Set up JDK versions
         uses: actions/setup-java@v4
         with:
           java-version: |
             8
+            21
             17
           distribution: 'zulu'
           cache: gradle
