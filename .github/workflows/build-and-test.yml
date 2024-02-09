@@ -26,6 +26,10 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
+    - name: Install Ubuntu dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y mesa-utils xvfb
     - name: Checkout mod repo
       uses: actions/checkout@v4
       with:
@@ -68,7 +72,7 @@ jobs:
 
     - name: Run post-build checks
       id: build_mod
-      run: ./gradlew --build-cache --info --stacktrace build
+      run: xvfb-run --server-args="-screen 0 1366x768x24" ./gradlew --build-cache --info --stacktrace build
 
     - name: Attempt to make a PR fixing spotless errors
       if: ${{ failure() && steps.build_mod.conclusion == 'failure' && github.event_name == 'pull_request' && !github.event.pull_request.draft }}
