@@ -66,13 +66,22 @@ jobs:
     - name: Attach compilation artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: build-libs
+        name: ${{ github.repository_id }}-build-libs
         path: build/libs/
         retention-days: 31
 
     - name: Run post-build checks
       id: build_mod
       run: xvfb-run --server-args="-screen 0 1366x768x24" ./gradlew --build-cache --info --stacktrace build
+
+    - name: Attach gradle reports
+      if: failure() && steps.build_mod.conclusion == 'failure'
+      uses: actions/upload-artifact@v4
+      continue-on-error: true
+      with:
+        name: ${{ github.repository_id }}-reports
+        path: build/reports/
+        retention-days: 31
 
     - name: Attempt to make a PR fixing spotless errors
       if: ${{ failure() && steps.build_mod.conclusion == 'failure' && github.event_name == 'pull_request' && !github.event.pull_request.draft }}
