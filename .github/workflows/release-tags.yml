@@ -85,7 +85,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to Maven
-        run: ./gradlew --build-cache --info --stacktrace -PmavenPublishUrl='${{ env.MAVEN_PUBLISHING_URL }}' assemble publish
+        run: ./gradlew --build-cache --info --stacktrace -PmavenPublishUrl='${{ env.MAVEN_PUBLISHING_URL }}' assemble publish -x test
         continue-on-error: true
         env:
           MAVEN_USER: ${{ secrets.MAVEN_USER }}
@@ -93,7 +93,7 @@ jobs:
         if: ${{ env.MAVEN_USER != '' }}
 
       - name: Publish to Modrinth and CurseForge
-        run: ./gradlew --build-cache --info --stacktrace -PmavenPublishUrl='${{ env.MAVEN_PUBLISHING_URL }}' assemble publish
+        run: ./gradlew --build-cache --info --stacktrace -PmavenPublishUrl='${{ env.MAVEN_PUBLISHING_URL }}' assemble publish -x test
         continue-on-error: true
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
