@@ -68,7 +68,7 @@ jobs:
       with:
         name: ${{ github.repository_id }}-build-libs
         path: build/libs/
-        retention-days: 31
+        retention-days: 90
 
     - name: Run post-build checks
       id: build_mod
