@@ -39,7 +39,7 @@ if grep --quiet --fixed-strings 'The state engine was in incorrect state ERRORED
   exit 1
 fi
 
-if grep --quiet --fixed-strings 'Exception stopping the server'  "$SERVERLOG"; then
+if grep --quiet --fixed-strings 'Exception stopping the server' "$SERVERLOG"; then
   {
     printf "Server didn't shut down cleanly:\n"
     cat server.log
