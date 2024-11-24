@@ -39,6 +39,14 @@ if grep --quiet --fixed-strings 'The state engine was in incorrect state ERRORED
   exit 1
 fi
 
+if grep --quiet --fixed-strings 'Exception stopping the server' "$SERVERLOG"; then
+  {
+    printf "Server didn't shut down cleanly:\n"
+    cat server.log
+  } >&2
+  exit 1
+fi
+
 if ! grep --quiet --perl-regexp --only-matching '.+Done \(.+\)\! For help, type "help" or "\?"' "$SERVERLOG"; then
   {
     printf 'Server did not finish startup:'
