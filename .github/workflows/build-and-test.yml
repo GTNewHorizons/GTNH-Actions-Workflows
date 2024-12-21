@@ -108,7 +108,7 @@ jobs:
         PR_BRANCH: ${{ github.head_ref }}
         FIXED_BRANCH: ${{ github.head_ref }}-spotless-fixes
 
-    - name: Run server for ${{ inputs.timeout }} seconds
+    - name: Run server for up to ${{ inputs.timeout }} seconds
       if: ${{ !inputs.client-only }}
       run: |
         mkdir -p run
