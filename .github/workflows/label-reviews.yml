@@ -10,7 +10,7 @@ jobs:
     # This needs to be kept in sync with the labels being checked
     # These don't need to hold the entire label name and aren't case sensitive
     if: ${{ contains(github.event.pull_request.labels.*.name, 'Affects Balance') || contains(github.event.pull_request.labels.*.name, 'ongoing freeze') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Label requires reviews
         uses: GTNewHorizons/label-requires-reviews-action@master
@@ -21,6 +21,5 @@ jobs:
           # define which PR labels require how many aprroving reviewers
           # Case sensitive and needs the full label name.
           rules_yaml: |-
-            Affects Balance: 3 
+            Affects Balance: 3
             ongoing freeze - don't merge: 99
-            
