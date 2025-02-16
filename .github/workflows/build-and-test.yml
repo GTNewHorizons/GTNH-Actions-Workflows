@@ -90,11 +90,8 @@ jobs:
     - name: Attempt to make a PR fixing spotless errors
       if: ${{ failure() && steps.build_mod.conclusion == 'failure' && github.event_name == 'pull_request' && !github.event.pull_request.draft }}
       run: |
-        set -x
-        git remote add pr-repo "${PR_REPO}"
-        git fetch --all
         git reset --hard
-        git checkout "pr-repo/${PR_BRANCH}"
+        git checkout "${PR_BRANCH}"
         ./gradlew --build-cache --info --stacktrace spotlessApply || exit 1
         git diff --exit-code && exit 1
         git config user.name "GitHub GTNH Actions"
@@ -103,19 +100,17 @@ jobs:
         git commit -am "spotlessApply"
         git push --force-with-lease origin "${FIXED_BRANCH}"
         gh pr create \
-          --head "origin:${FIXED_BRANCH}" \
+          --head "${FIXED_BRANCH}" \
           --base "${PR_BRANCH}" \
           --title "Spotless apply for branch ${PR_BRANCH} for #${{ github.event.pull_request.number }}" \
-          --body "Automatic spotless apply to fix formatting errors, applies to PR #${{ github.event.pull_request.number }} at ${{ github.event.pull_request._links.html }}" \
-          --repo "${{ github.event.pull_request.head.repo.full_name }}" \
+          --body "Automatic spotless apply to fix formatting errors, applies to PR #${{ github.event.pull_request.number }}" \
           2>&1 | tee pr-message.log || true
         gh pr comment "${PR_BRANCH}" -F pr-message.log || true
       shell: bash # ensures set -eo pipefail
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        PR_REPO: ${{ github.event.pull_request.head.repo.clone_url }}
         PR_BRANCH: ${{ github.head_ref }}
-        FIXED_BRANCH: ${{ github.event.pull_request.head.repo.owner.login }}-${{ github.head_ref }}-spotless-fixes
+        FIXED_BRANCH: ${{ github.head_ref }}-spotless-fixes
 
     - name: Run server for up to ${{ inputs.timeout }} seconds
       if: ${{ !inputs.client-only }}
