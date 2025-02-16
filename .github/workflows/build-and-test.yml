@@ -46,8 +46,8 @@ jobs:
       with:
         java-version: |
           8
-          21
           17
+          21
         distribution: 'zulu'
 
     - name: Setup Gradle
