@@ -1,0 +1,48 @@
+name: Mention upstream repo for new pull requests
+
+on:
+  workflow_call:
+    inputs:
+      upstream:
+        description: 'URL to the upstream repository'
+        required: true
+        type: string
+      auto_close:
+        description: 'Whether to close the PR after commenting'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          upstream: ${{ inputs.upstream }}
+          auto_close: ${{ inputs.auto_close }}
+          script: |
+            const upstream = core.getInput('upstream');
+            const commentBody = `Thanks for the PR!
+
+            PRs to this repo should be opened on the upstream repo [here](${upstream}) instead of the GTNH fork. This can be ignored if there is a good reason to PR to specifically the fork instead.`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: commentBody
+            });
+
+            const auto_close = core.getBooleanInput('auto_close');
+            if (auto_close) {
+              github.rest.issues.update({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'closed'
+              });
+            }
