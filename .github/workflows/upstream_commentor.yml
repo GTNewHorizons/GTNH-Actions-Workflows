@@ -28,7 +28,7 @@ jobs:
             const upstream = core.getInput('upstream');
             const commentBody = `Thanks for the PR!
 
-            PRs to this repo should be opened on the upstream repo [here](${upstream}) instead of the GTNH fork. This can be ignored if there is a good reason to PR to specifically the fork instead.`;
+            PRs to this repo should be closed and reopened on the [upstream repo](${upstream}) instead of the GTNH fork. This can be ignored if there is a good reason to PR to specifically the fork instead.`;
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
