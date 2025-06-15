@@ -102,11 +102,11 @@ jobs:
         continue-on-error: true
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-        if: ${{ env.SNAPSHOT != 'true' || env.PRERELEASE != 'true' }}
+        if: ${{ env.SNAPSHOT != 'true' && env.PRERELEASE != 'true' }}
 
       - name: Publish to Curseforge
         run: ./gradlew --build-cache --info --stacktrace -PmavenPublishUrl='${{ env.MAVEN_PUBLISHING_URL }}' assemble publish -x test
         continue-on-error: true
         env:
           CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
-        if: ${{ env.SNAPSHOT != 'true' || env.PRERELEASE != 'true' }}
+        if: ${{ env.SNAPSHOT != 'true' && env.PRERELEASE != 'true' }}
