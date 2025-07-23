@@ -20,15 +20,7 @@ jobs:
           find . -type f -name "*.png" ! -path "./.git/*" -exec optipng -o7 -nc {} +
           
       - name: Check for changes
-        id: git-diff
-        run: |
-          if [[ -n "$(git status --porcelain)" ]]; then
-            echo "changed=true"
-          else
-            echo "changed=false"
-          fi
-          
-      - name: Check for changes
+        id: check_changes
         run: |
           if [[ -n "$(git status --porcelain)" ]]; then
             echo "needs_compression=true" >> "$GITHUB_OUTPUT"
