@@ -17,7 +17,7 @@ jobs:
 
       - name: Optimize PNG files
         run: |
-          find . -type f -name "*.png" ! -path "./.git/*" -exec optipng -o7 {} +
+          find . -type f -name "*.png" ! -path "./.git/*" -exec optipng -o7 -np {} +
           
       - name: Check for changes
         run: |
