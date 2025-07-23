@@ -17,20 +17,28 @@ jobs:
 
       - name: Optimize PNG files
         run: |
-          find . -type f -name "*.png" ! -path "./.git/*" -exec optipng -o7 -np {} +
+          find . -type f -name "*.png" ! -path "./.git/*" -exec optipng -o7 -nc {} +
+          
+      - name: Check for changes
+        id: git-diff
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "changed=true"
+          else
+            echo "changed=false"
+          fi
           
       - name: Check for changes
         run: |
           if [[ -n "$(git status --porcelain)" ]]; then
-            echo "Everything is already correctly compressed."
-            exit 0
+            echo "needs_compression=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Some files aren't correctly compressed."
-            exit 1
+            echo "needs_compression=false" >> "$GITHUB_OUTPUT"
           fi
+
           
       - name: Create Pull Request if Needed
-        if: ${{ failure() && github.event_name == 'pull_request' && !github.event.pull_request.draft }}
+        if: ${{ steps.check_changes.outputs.needs_compression == 'true' && github.event_name == 'pull_request' && !github.event.pull_request.draft }}
         run: |
           git config user.name "GitHub GTNH Actions"
           git config user.email "<>"
@@ -44,10 +52,13 @@ jobs:
             --body "Automatic image compression, applies to PR #${{ github.event.pull_request.number }}" \
             2>&1 | tee pr-message.log || true
           gh pr comment "${PR_BRANCH}" -F pr-message.log || true
-        shell: 
+        shell: bash # ensures set -eo pipefail
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_BRANCH: ${{ github.head_ref }}
           FIXED_BRANCH: ${{ github.head_ref }}-image-compression
-          
+      - name: Fail if there was compressed files
+        if: ${{ steps.check_changes.outputs.needs_compression == 'true' }}
+        run: |
+          exit 1
         
