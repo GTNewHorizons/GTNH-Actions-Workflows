@@ -20,7 +20,6 @@ jobs:
           find . -type f -name "*.png" ! -path "./.git/*" -exec optipng -o7 {} +
           
       - name: Check for changes
-        id: git-diff
         run: |
           if [[ -n "$(git status --porcelain)" ]]; then
             echo "Everything is already correctly compressed."
@@ -31,25 +30,24 @@ jobs:
           fi
           
       - name: Create Pull Request if Needed
-        if: steps.compress-images.outputs.markdown_report != ''
         if: ${{ failure() && github.event_name == 'pull_request' && !github.event.pull_request.draft }}
-      run: |
-        git config user.name "GitHub GTNH Actions"
-        git config user.email "<>"
-        git switch -c "${FIXED_BRANCH}"
-        git commit -am "optimizing images"
-        git push --force-with-lease origin "${FIXED_BRANCH}"
-        gh pr create \
-          --head "${FIXED_BRANCH}" \
-          --base "${PR_BRANCH}" \
-          --title "Optimising images contained in ${PR_BRANCH} for #${{ github.event.pull_request.number }}" \
-          --body "Automatic image compression, applies to PR #${{ github.event.pull_request.number }}" \
-          2>&1 | tee pr-message.log || true
-        gh pr comment "${PR_BRANCH}" -F pr-message.log || true
-      shell: 
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        PR_BRANCH: ${{ github.head_ref }}
-        FIXED_BRANCH: ${{ github.head_ref }}-image-compression
+        run: |
+          git config user.name "GitHub GTNH Actions"
+          git config user.email "<>"
+          git switch -c "${FIXED_BRANCH}"
+          git commit -am "optimizing images"
+          git push --force-with-lease origin "${FIXED_BRANCH}"
+          gh pr create \
+            --head "${FIXED_BRANCH}" \
+            --base "${PR_BRANCH}" \
+            --title "Optimising images contained in ${PR_BRANCH} for #${{ github.event.pull_request.number }}" \
+            --body "Automatic image compression, applies to PR #${{ github.event.pull_request.number }}" \
+            2>&1 | tee pr-message.log || true
+          gh pr comment "${PR_BRANCH}" -F pr-message.log || true
+        shell: 
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_BRANCH: ${{ github.head_ref }}
+          FIXED_BRANCH: ${{ github.head_ref }}-image-compression
           
         
