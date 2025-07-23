@@ -9,27 +9,27 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout Repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Compress Images
-        id: compress-images
-        uses: stellasoftio/image-optimizer-action@v1
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          compress-png:	true
-          compress-svg:	false
-          compress-jpg:	false
-          compress-webp: false
-          compress-avif: false
-     
-      - name: Fail if image optimization was needed
-        if: steps.compress-images.outputs.markdown_report != ''
-        run: |
-          echo "Unoptimized image(s) have been detected."
-          exit 1
-          
+      - name: Install optipng
+        run: sudo apt-get update && sudo apt-get install -y optipng
 
+      - name: Optimize PNG files
+        run: |
+          find . -type f -name "*.png" ! -path "./.git/*" -exec optipng -o7 {} +
+          
+      - name: Check for changes
+        id: git-diff
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "Everything is already correctly compressed."
+            exit 0
+          else
+            echo "Some files aren't correctly compressed."
+            exit 1
+          fi
+          
       - name: Create Pull Request if Needed
         if: steps.compress-images.outputs.markdown_report != ''
         if: ${{ failure() && github.event_name == 'pull_request' && !github.event.pull_request.draft }}
@@ -43,7 +43,7 @@ jobs:
           --head "${FIXED_BRANCH}" \
           --base "${PR_BRANCH}" \
           --title "Optimising images contained in ${PR_BRANCH} for #${{ github.event.pull_request.number }}" \
-          --body "Automatic image compression, applies to PR #${{ github.event.pull_request.number }}\n\n${{ steps.compress-images.outputs.markdown_report }}" \
+          --body "Automatic image compression, applies to PR #${{ github.event.pull_request.number }}" \
           2>&1 | tee pr-message.log || true
         gh pr comment "${PR_BRANCH}" -F pr-message.log || true
       shell: 
