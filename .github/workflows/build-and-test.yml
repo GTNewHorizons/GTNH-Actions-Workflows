@@ -27,7 +27,6 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - name: Fail on draft PR
-      id: fail_for_draft
       if: github.event_name == 'pull_request' && github.event.pull_request.draft == true
       run: |
         echo "This pull request is a draft. Skipping tests."
