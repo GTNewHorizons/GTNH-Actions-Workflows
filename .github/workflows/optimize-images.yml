@@ -24,7 +24,6 @@ jobs:
           while IFS= read -r -d '' file; do
             echo "Compressing: $file"
             if ! optipng -o7 -nc "$file" >/dev/null 2>&1; then
-              echo "FAILED: $file (exit code $STATUS)"
               FAILED_FILES+="$file"$'\n'
             fi
           done < <(find . -type f -name "*.png" ! -path "./.git/*" -print0)
