@@ -16,9 +16,37 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y optipng
 
       - name: Optimize PNG files
+        id: optimize_png
         run: |
-          find . -type f -name "*.png" ! -path "./.git/*" -exec optipng -o7 -nc {} +
+          set -euo pipefail
+
+          FAILED_FILES=""
+          while IFS= read -r -d '' file; do
+            echo "Compressing: $file"
+            if ! optipng -o7 -nc "$file" >/dev/null 2>&1; then
+              STATUS=$?
+              if [[ $STATUS -gt 2 ]]; then
+                echo "FAILED: $file (exit code $STATUS)"
+                FAILED_FILES+="$file"$'\n'
+              else
+                echo "Skipped (already optimized or warning): $file"
+              fi
+            fi
+          done < <(find . -type f -name "*.png" ! -path "./.git/*" -print0)
+
+          if [[ -n "$FAILED_FILES" ]]; then
+            echo "failed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$FAILED_FILES" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
           
+      - name: Print files that failed to compress
+        if: failure() && steps.optimize_png.outputs.failed_files != ''
+        run: |
+          echo "The following files failed to compress:"
+          echo "${{ steps.optimize_png.outputs.failed_files }}"
+      
       - name: Check for changes
         id: check_changes
         run: |
@@ -27,7 +55,6 @@ jobs:
           else
             echo "needs_compression=false" >> "$GITHUB_OUTPUT"
           fi
-
           
       - name: Create Pull Request if Needed
         if: ${{ steps.check_changes.outputs.needs_compression == 'true' && github.event_name == 'pull_request' && !github.event.pull_request.draft }}
