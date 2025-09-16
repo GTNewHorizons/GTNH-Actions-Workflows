@@ -88,7 +88,11 @@ jobs:
         retention-days: 31
 
     - name: Attempt to make a PR fixing spotless errors
-      if: ${{ failure() && steps.build_mod.conclusion == 'failure' && github.event_name == 'pull_request' && !github.event.pull_request.draft }}
+      if: >-
+        ${{ failure() && steps.build_mod.conclusion == 'failure'
+          && github.event_name == 'pull_request'
+          && !github.event.pull_request.draft
+          && github.event.pull_request.head.repo.full_name == github.repository }}
       run: |
         git reset --hard
         git checkout "${PR_BRANCH}"
