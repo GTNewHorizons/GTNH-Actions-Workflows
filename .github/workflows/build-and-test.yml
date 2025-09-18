@@ -88,7 +88,11 @@ jobs:
         retention-days: 31
 
     - name: Attempt to make a PR fixing spotless errors
-      if: ${{ failure() && steps.build_mod.conclusion == 'failure' && github.event_name == 'pull_request' && !github.event.pull_request.draft }}
+      if: >-
+        ${{ failure() && steps.build_mod.conclusion == 'failure'
+          && github.event_name == 'pull_request'
+          && !github.event.pull_request.draft
+          && github.event.pull_request.head.repo.full_name == github.repository }}
       run: |
         git reset --hard
         git checkout "${PR_BRANCH}"
@@ -131,3 +135,21 @@ jobs:
     - name: Test no prerelease dependencies used
       run: |
         ! grep -P -- "-pre(?!shadow)" dependencies.gradle*
+
+    # See https://github.com/GTNewHorizons/GT5-Unofficial/pull/4880
+    - name: Make sure asset files are not overoptimized
+      run: |
+        echo "Checking for grayscale asset files which are not supported by the java8 image loader"
+        fail=0
+        set -o pipefail
+        while IFS= read -r -d $'\n' file; do
+          if $(file --brief -- "$file" | grep -q grayscale); then
+            printf "found grayscale image '%s'\n" "$file"
+            fail=1
+          fi
+        done < <(gh pr diff --name-only "${PR_NUMBER}" | grep 'src/main/resources/.*\.png$')
+
+        exit $fail
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        PR_NUMBER: ${{ github.event.number }}
