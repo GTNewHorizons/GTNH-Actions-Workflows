@@ -79,7 +79,8 @@ jobs:
           CHANGELOG_OVERRIDE=".changelogs/${RELEASE_VERSION}.md"    
           if [[ -f "$CHANGELOG_OVERRIDE" ]]; then
             echo "Using changelog override: $CHANGELOG_OVERRIDE"
-            CHANGELOG_FILE="$CHANGELOG_OVERRIDE"
+            export "CHANGELOG_FILE=$CHANGELOG_OVERRIDE"
+            echo "CHANGELOG_FILE=${CHANGELOG_FILE}" >> $GITHUB_ENV
           else
             echo "Generating changelog notes..."
             export "CHANGELOG_FILE=$(mktemp --suffix=.md)"
