@@ -76,12 +76,20 @@ jobs:
           if [[ "$SNAPSHOT" == "true" ]]; then
             PRERELEASE="--prerelease"
           fi
-          export "CHANGELOG_FILE=$(mktemp --suffix=.md)"
-          echo "CHANGELOG_FILE=${CHANGELOG_FILE}" >> $GITHUB_ENV
-          gh api --method POST -H "Accept: application/vnd.github+json" \
-            "/repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
-            -f tag_name="${RELEASE_VERSION}" \
-            --jq ".body" > "${CHANGELOG_FILE}"
+          CHANGELOG_OVERRIDE=".changelogs/${RELEASE_VERSION}.md"    
+          if [[ -f "$CHANGELOG_OVERRIDE" ]]; then
+            echo "Using changelog override: $CHANGELOG_OVERRIDE"
+            export "CHANGELOG_FILE=$CHANGELOG_OVERRIDE"
+            echo "CHANGELOG_FILE=${CHANGELOG_FILE}" >> $GITHUB_ENV
+          else
+            echo "Generating changelog notes..."
+            export "CHANGELOG_FILE=$(mktemp --suffix=.md)"
+            echo "CHANGELOG_FILE=${CHANGELOG_FILE}" >> $GITHUB_ENV
+            gh api --method POST -H "Accept: application/vnd.github+json" \
+              "/repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+              -f tag_name="${RELEASE_VERSION}" \
+              --jq ".body" > "${CHANGELOG_FILE}"
+          fi 
           cat "${CHANGELOG_FILE}"
           gh release create "${RELEASE_VERSION}" -F "${CHANGELOG_FILE}" $PRERELEASE ./build/libs/*.jar
         shell: bash
