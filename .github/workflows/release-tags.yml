@@ -75,7 +75,7 @@ jobs:
           PRERELEASE=""
           if [[ "$SNAPSHOT" == "true" ]]; then
             PRERELEASE="--prerelease"
-          fi    
+          fi
           CHANGELOG_OVERRIDE=".changelogs/${RELEASE_VERSION}.md"    
           if [[ -f "$CHANGELOG_OVERRIDE" ]]; then
             echo "Using changelog override: $CHANGELOG_OVERRIDE"
@@ -95,7 +95,6 @@ jobs:
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
 
       - name: Publish to Maven
         run: ./gradlew --build-cache --info --stacktrace -PmavenPublishUrl='${{ env.MAVEN_PUBLISHING_URL }}' assemble publish -x test
