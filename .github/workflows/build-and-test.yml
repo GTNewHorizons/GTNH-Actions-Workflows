@@ -119,10 +119,12 @@ jobs:
     - name: Run server for up to ${{ inputs.timeout }} seconds
       if: ${{ !inputs.client-only }}
       run: |
-        mkdir -p run
+        mkdir -p run/server
         echo "eula=true" > run/eula.txt
+        echo "eula=true" > run/server/eula.txt
         # Set a constant seed with a village at spawn
         echo "level-seed=-6202107849386030209\nonline-mode=true\n" > run/server.properties
+        echo "level-seed=-6202107849386030209\nonline-mode=true\n" > run/server/server.properties
         echo "stop" > run/stop.txt
         timeout ${{ inputs.timeout }} ./gradlew --build-cache --info --stacktrace runServer 2>&1 < run/stop.txt | tee -a server.log || true
 
