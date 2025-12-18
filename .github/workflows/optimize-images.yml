@@ -21,7 +21,6 @@ jobs:
       - name: Get PNG files
         id: get_png_files
         run: |
-          echo "GH_TOKEN=${GH_TOKEN}"
           {
             echo 'png_files<<EOF'
             if [ "${{ github.event_name }}" = pull_request ] &&
