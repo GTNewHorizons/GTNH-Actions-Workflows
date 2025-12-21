@@ -1,0 +1,96 @@
+name: Check for image compression
+
+on:
+  workflow_call:
+
+jobs:
+  compress:
+    name: Compress and make a PR if needed
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install optipng
+        run: |
+          if ! command -v optipng >/dev/null 2>&1; then
+            sudo apt-get update && sudo apt-get install -y optipng
+          fi
+
+      - name: Get PNG files
+        id: get_png_files
+        run: |
+          {
+            echo 'png_files<<EOF'
+            if [ "${{ github.event_name }}" = pull_request ] &&
+               [ "${{ !github.event.pull_request.draft }}" = true ]; then
+              gh pr diff "$PR_NUMBER" --name-only | grep '*.png'
+            else
+              find "$GITHUB_WORKSPACE" -type f -name "*.png" ! -path "$GITHUB_WORKSPACE/.git/*" -print 2>/dev/null
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+
+      - name: Optimize PNG files
+        id: optimize_png
+        run: |
+          lf="$(printf '\nx')"&&lf=${lf%?}
+          failed_files=""
+          while IFS= read -r file; do
+            [ -n "$file" ] || continue
+            workspace_file=${file#"$GITHUB_WORKSPACE"}
+            printf 'Compressing: %s\n' "$workspace_file"
+            if ! optipng -o7 -nc -quiet "$file" >/dev/null 2>&1; then
+              failed_files="$failed_files$workspace_file$lf"
+            fi
+          done <<EOF
+          ${{ steps.get_png_files.outputs.png_files }}
+          EOF
+
+          if [ -n "$failed_files" ]; then
+            printf 'failed_files<<EOF\n%sEOF\n' "$failed_files" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Print files that failed to compress
+        if: failure() && steps.optimize_png.outputs.failed_files != ''
+        run: |
+          printf 'The following files failed to compress:\n%s\n' "${{ steps.optimize_png.outputs.failed_files }}"
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "needs_compression=true"
+          else
+            echo "needs_compression=false"
+          fi >> "$GITHUB_OUTPUT"
+
+      - name: Create Pull Request if Needed
+        if: ${{ steps.check_changes.outputs.needs_compression == 'true' && github.event_name == 'pull_request' && !github.event.pull_request.draft }}
+        run: |
+          git config user.name "GitHub GTNH Actions"
+          git config user.email "<>"
+          git switch -c "${FIXED_BRANCH}"
+          git commit -am "optimizing images"
+          git push --force-with-lease origin "${FIXED_BRANCH}"
+          gh pr create \
+            --head "${FIXED_BRANCH}" \
+            --base "${PR_BRANCH}" \
+            --title "Optimising images contained in ${PR_BRANCH} for #${{ github.event.pull_request.number }}" \
+            --body "Automatic image compression, applies to PR #${{ github.event.pull_request.number }}" \
+            2>&1 | tee pr-message.log || true
+          gh pr comment "${PR_BRANCH}" -F pr-message.log || true
+        shell: bash # ensures set -eo pipefail
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_BRANCH: ${{ github.head_ref }}
+          FIXED_BRANCH: ${{ github.head_ref }}-image-compression
+      - name: Fail if there was compressed files
+        if: ${{ steps.check_changes.outputs.needs_compression == 'true' }}
+        run: |
+          exit 1
