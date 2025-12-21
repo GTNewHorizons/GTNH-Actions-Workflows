@@ -18,7 +18,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          # define which PR labels require how many aprroving reviewers
+          # define which PR labels require how many approving reviewers
           # Case sensitive and needs the full label name.
           rules_yaml: |-
             Affects Balance: 3
