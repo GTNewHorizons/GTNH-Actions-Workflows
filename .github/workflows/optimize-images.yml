@@ -25,7 +25,8 @@ jobs:
             echo 'png_files<<EOF'
             if [ "${{ github.event_name }}" = pull_request ] &&
                [ "${{ !github.event.pull_request.draft }}" = true ]; then
-              gh pr diff "$PR_NUMBER" --name-only | grep '*.png'
+              git fetch origin pull/$PR_NUMBER/head 
+              git diff --name-only origin/$GITHUB_BASE_REF...FETCH_HEAD | grep '*.png'
             else
               find "$GITHUB_WORKSPACE" -type f -name "*.png" ! -path "$GITHUB_WORKSPACE/.git/*" -print 2>/dev/null
             fi
