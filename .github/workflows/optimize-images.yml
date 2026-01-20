@@ -21,26 +21,24 @@ jobs:
       - name: Get PNG files
         id: get_png_files
         run: |
+          png_files=$(mktemp) &&
           {
-            echo 'png_files<<EOF'
             if [ "${{ github.event_name }}" = pull_request ] &&
                [ "${{ !github.event.pull_request.draft }}" = true ]; then
-              git fetch origin "$GITHUB_BASE_REF" &&
-              git fetch origin "$GITHUB_BASE_REF" "refs/pull/$PR_NUMBER/head:pr-$PR_NUMBER" &&
-              git diff --name-only --diff-filter=AM --no-renames "origin/$GITHUB_BASE_REF" "pr-$PR_NUMBER" -- '*.png'
+              git fetch origin "$GITHUB_BASE_REF:$GITHUB_BASE_REF" &&
+              git diff --name-only --diff-filter=AM --no-renames "origin/$GITHUB_BASE_REF" -- '*.png'
             else
-              find "$GITHUB_WORKSPACE" -type f -name "*.png" ! -path "$GITHUB_WORKSPACE/.git/*" -print 2>/dev/null
+              find "$GITHUB_WORKSPACE" -type f -name "*.png" ! -path "$GITHUB_WORKSPACE/.git/*" -print 2> /dev/null || :
             fi
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          } > "$png_files" &&
+          printf 'png_files=%s\n' "$png_files" >> "$GITHUB_OUTPUT"
 
       - name: Optimize PNG files
         id: optimize_png
         run: |
           lf="$(printf '\nx')"&&lf=${lf%?}
+          png_files=${{ steps.get_png_files.outputs.png_files }}
+          trap 'rm -f -- "$png_files"' EXIT INT
           failed_files=""
           while IFS= read -r file; do
             [ -n "$file" ] || continue
@@ -49,9 +47,7 @@ jobs:
             if ! optipng -o7 -nc -quiet "$file" >/dev/null 2>&1; then
               failed_files="$failed_files$workspace_file$lf"
             fi
-          done <<EOF
-          ${{ steps.get_png_files.outputs.png_files }}
-          EOF
+          done < "$png_files"
 
           if [ -n "$failed_files" ]; then
             printf 'failed_files<<EOF\n%sEOF\n' "$failed_files" >> "$GITHUB_OUTPUT"
@@ -76,7 +72,7 @@ jobs:
         if: ${{ steps.check_changes.outputs.needs_compression == 'true' && github.event_name == 'pull_request' && !github.event.pull_request.draft }}
         run: |
           git config user.name "GitHub GTNH Actions"
-          git config user.email "<>"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com" &&
           git switch -c "${FIXED_BRANCH}"
           git commit -am "optimizing images"
           git push --force-with-lease origin "${FIXED_BRANCH}"
@@ -86,7 +82,7 @@ jobs:
             --title "Optimising images contained in ${PR_BRANCH} for #${{ github.event.pull_request.number }}" \
             --body "Automatic image compression, applies to PR #${{ github.event.pull_request.number }}" \
             2>&1 | tee pr-message.log || true
-          gh pr comment "${PR_BRANCH}" -F pr-message.log || true
+          gh pr comment "${{ github.event.pull_request.number }}" -F pr-message.log || true
         shell: bash # ensures set -eo pipefail
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
