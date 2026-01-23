@@ -51,7 +51,6 @@ jobs:
 
           if [ -n "$failed_files" ]; then
             printf 'failed_files<<EOF\n%sEOF\n' "$failed_files" >> "$GITHUB_OUTPUT"
-            exit 1
           fi
 
       - name: Print files that failed to compress
