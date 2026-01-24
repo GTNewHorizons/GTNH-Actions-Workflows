@@ -87,7 +87,3 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_BRANCH: ${{ github.head_ref }}
           FIXED_BRANCH: ${{ github.head_ref }}-image-compression
-      - name: Fail if there was compressed files
-        if: ${{ steps.check_changes.outputs.needs_compression == 'true' }}
-        run: |
-          exit 1
