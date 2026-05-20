@@ -84,11 +84,27 @@ jobs:
     - name: Compile the mod
       run: ./gradlew --build-cache --info --stacktrace assemble
 
-    - name: Attach compilation artifacts
-      uses: actions/upload-artifact@v5
+    - name: Attach user artifacts
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ github.repository_id }}-build-libs
-        path: build/libs/
+        path: |
+          build/libs/
+          !build/libs/*-api.jar
+          !build/libs/*-dev.jar
+          !build/libs/*-dev-preshadow.jar
+          !build/libs/*-sources.jar
+        retention-days: 90
+
+    - name: Attach dev artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ github.repository_id }}-build-dev-libs
+        path: |
+          build/libs/*-api.jar
+          build/libs/*-dev.jar
+          build/libs/*-dev-preshadow.jar
+          build/libs/*-sources.jar
         retention-days: 90
 
     - name: Run post-build checks
@@ -106,10 +122,11 @@ jobs:
 
     - name: Attempt to make a PR fixing spotless errors
       if: >-
-        ${{ failure() && steps.build_mod.conclusion == 'failure'
-          && github.event_name == 'pull_request'
-          && !github.event.pull_request.draft
-          && github.event.pull_request.head.repo.full_name == github.repository }}
+        ${{ !github.event.inputs.disable-spotless &&
+        failure() && steps.build_mod.conclusion == 'failure' &&
+        github.event_name == 'pull_request' &&
+        !github.event.pull_request.draft &&
+        github.event.pull_request.head.repo.full_name == github.repository }}
       run: |
         git reset --hard
         git checkout "${PR_BRANCH}"
