@@ -1,4 +1,4 @@
-name: Upload Unzipped Jar
+name: Upload individual JAR
 
 on:
   workflow_call:
@@ -8,19 +8,19 @@ on:
         type: string
 
 jobs:
-  upload:
+  upload-individual-jar:
     runs-on: ubuntu-24.04
     steps:
     # In order to run this for all jars, we have to call it individually for each jar, on a separate job.
     # Because dynamically running this workflow file requires a unique job run, we can't just grab the jars directly because they're already gone by then.
     # We have to do this because unzipped upload can only be ran on one file (arbitrary restrictions 💢)
-      - name: Retrieve Compiled Jars
+      - name: Extract archive to retrieve artifact
         uses: actions/download-artifact@v8
         with:
           name: ${{ github.repository_id }}-build-libs
           path: build/libs
 
-      - name: Upload Unzipped Jar
+      - name: Upload individual compilation artifact
         uses: actions/upload-artifact@v7
         with:
           path: ${{ inputs.jar_path }}

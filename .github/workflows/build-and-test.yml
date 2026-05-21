@@ -171,26 +171,26 @@ jobs:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         PR_NUMBER: ${{ github.event.number }}
 
-    - name: Upload Legacy ZIP Artifact
+    - name: Attach compilation artifacts as ZIP
       uses: actions/upload-artifact@v7
       with:
         name: ${{ github.repository_id }}-build-libs
         path: build/libs/
         retention-days: 90
 
-    - name: Scan build folder for dynamic JARs
+    - name: Store the name of each built file
       id: expose-jars
       run: |
         shopt -s nullglob
         JAR_JSON=$(jq -n -c '$ARGS.positional' --args build/libs/*.jar)
         echo "matrix=$JAR_JSON" >> "$GITHUB_OUTPUT"
 
-  run-unzipped-uploads:
+  run-individual-uploads:
     needs: build-and-test
     strategy:
       fail-fast: false
       matrix:
         jar: ${{ fromJson(needs.build-and-test.outputs.jar_matrix) }}
-    uses: ./.github/workflows/upload-unzipped-jar.yml
+    uses: ./.github/workflows/upload-individual-jar.yml
     with:
       jar_path: ${{ matrix.jar }}
