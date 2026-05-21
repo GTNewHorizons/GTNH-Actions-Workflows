@@ -99,7 +99,7 @@ jobs:
       with:
         name: ${{ github.repository_id }}-reports
         path: build/reports/
-        retention-days: 31
+        retention-days: 90
 
     - name: Attempt to make a PR fixing spotless errors
       if: >-
