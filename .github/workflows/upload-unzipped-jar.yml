@@ -1,0 +1,24 @@
+name: Upload Unzipped Jar
+
+on:
+  workflow_call:
+    inputs:
+      jar_path:
+        required: true
+        type: string
+
+jobs:
+  upload:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Retrieve Compiled Jars
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ github.repository_id }}-build-libs
+          path: build/libs
+
+      - name: Upload Unzipped Jar
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{ inputs.jar_path }}
+          archive: false

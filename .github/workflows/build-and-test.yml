@@ -29,6 +29,10 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-24.04
+
+    outputs:
+      jar_matrix: ${{ steps.expose-jars.outputs.matrix }}
+
     steps:
     - name: Install Ubuntu dependencies
       run: |
@@ -83,29 +87,6 @@ jobs:
 
     - name: Compile the mod
       run: ./gradlew --build-cache --info --stacktrace assemble
-
-    - name: Attach user artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ github.repository_id }}-build-libs
-        path: |
-          build/libs/
-          !build/libs/*-api.jar
-          !build/libs/*-dev.jar
-          !build/libs/*-dev-preshadow.jar
-          !build/libs/*-sources.jar
-        retention-days: 90
-
-    - name: Attach dev artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ github.repository_id }}-build-dev-libs
-        path: |
-          build/libs/*-api.jar
-          build/libs/*-dev.jar
-          build/libs/*-dev-preshadow.jar
-          build/libs/*-sources.jar
-        retention-days: 90
 
     - name: Run post-build checks
       id: build_mod
@@ -189,3 +170,27 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         PR_NUMBER: ${{ github.event.number }}
+
+    - name: Upload Legacy ZIP Artifact
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ github.repository_id }}-build-libs
+        path: build/libs/
+        retention-days: 90
+
+    - name: Scan build folder for dynamic JARs
+      id: expose-jars
+      run: |
+        shopt -s nullglob
+        JAR_JSON=$(jq -n -c '$ARGS.positional' --args build/libs/*.jar)
+        echo "matrix=$JAR_JSON" >> "$GITHUB_OUTPUT"
+
+  run-unzipped-uploads:
+    needs: build-and-test
+    strategy:
+      fail-fast: false
+      matrix:
+        jar: ${{ fromJson(needs.build-and-test.outputs.jar_matrix) }}
+    uses: ./.github/workflows/upload-unzipped-jar.yml
+    with:
+      jar_path: ${{ matrix.jar }}
