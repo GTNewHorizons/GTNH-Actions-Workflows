@@ -21,6 +21,11 @@ on:
         required: false
         default: false
         type: boolean
+      disable-spotless-pr:
+        description: 'Do not run spotless PR task'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -103,7 +108,7 @@ jobs:
 
     - name: Attempt to make a PR fixing spotless errors
       if: >-
-        ${{ !github.event.inputs.disable-spotless &&
+        ${{ !inputs.disable-spotless-pr &&
         failure() && steps.build_mod.conclusion == 'failure' &&
         github.event_name == 'pull_request' &&
         !github.event.pull_request.draft &&
