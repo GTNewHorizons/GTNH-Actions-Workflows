@@ -34,10 +34,6 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-24.04
-
-    outputs:
-      jar_matrix: ${{ steps.expose-jars.outputs.matrix }}
-
     steps:
     - name: Install Ubuntu dependencies
       run: |
@@ -183,19 +179,98 @@ jobs:
         path: build/libs/
         retention-days: 90
 
-    - name: Store the name of each built file
-      id: expose-jars
+    - name: Find individual compilation artifacts
+      id: find-artifacts
+      shell: bash
       run: |
-        shopt -s nullglob
-        JAR_JSON=$(jq -n -c '$ARGS.positional' --args build/libs/*.jar)
-        echo "matrix=$JAR_JSON" >> "$GITHUB_OUTPUT"
+        mapfile -t files < <(find build/libs -maxdepth 1 -type f | sort)
 
-  run-individual-uploads:
-    needs: build-and-test
-    strategy:
-      fail-fast: false
-      matrix:
-        jar: ${{ fromJson(needs.build-and-test.outputs.jar_matrix) }}
-    uses: ./.github/workflows/upload-individual-jar.yml
-    with:
-      jar_path: ${{ matrix.jar }}
+        if (( ${#files[@]} > 10 )); then
+          echo "::warning::Found ${#files[@]} files in build/libs, but only the first 10 will be uploaded individually."
+        fi
+
+        for i in {0..9}; do
+          if [[ -n "${files[$i]:-}" ]]; then
+            echo "file_${i}=${files[$i]}" >> "$GITHUB_OUTPUT"
+          fi
+        done
+
+    - name: Upload individual compilation artifact 1
+      if: ${{ steps.find-artifacts.outputs.file_0 != '' }}
+      uses: actions/upload-artifact@v7
+      with:
+        path: ${{ steps.find-artifacts.outputs.file_0 }}
+        retention-days: 90
+        archive: false
+
+    - name: Upload individual compilation artifact 2
+      if: ${{ steps.find-artifacts.outputs.file_1 != '' }}
+      uses: actions/upload-artifact@v7
+      with:
+        path: ${{ steps.find-artifacts.outputs.file_1 }}
+        retention-days: 90
+        archive: false
+
+    - name: Upload individual compilation artifact 3
+      if: ${{ steps.find-artifacts.outputs.file_2 != '' }}
+      uses: actions/upload-artifact@v7
+      with:
+        path: ${{ steps.find-artifacts.outputs.file_2 }}
+        retention-days: 90
+        archive: false
+
+    - name: Upload individual compilation artifact 4
+      if: ${{ steps.find-artifacts.outputs.file_3 != '' }}
+      uses: actions/upload-artifact@v7
+      with:
+        path: ${{ steps.find-artifacts.outputs.file_3 }}
+        retention-days: 90
+        archive: false
+
+    - name: Upload individual compilation artifact 5
+      if: ${{ steps.find-artifacts.outputs.file_4 != '' }}
+      uses: actions/upload-artifact@v7
+      with:
+        path: ${{ steps.find-artifacts.outputs.file_4 }}
+        retention-days: 90
+        archive: false
+
+    - name: Upload individual compilation artifact 6
+      if: ${{ steps.find-artifacts.outputs.file_5 != '' }}
+      uses: actions/upload-artifact@v7
+      with:
+        path: ${{ steps.find-artifacts.outputs.file_5 }}
+        retention-days: 90
+        archive: false
+
+    - name: Upload individual compilation artifact 7
+      if: ${{ steps.find-artifacts.outputs.file_6 != '' }}
+      uses: actions/upload-artifact@v7
+      with:
+        path: ${{ steps.find-artifacts.outputs.file_6 }}
+        retention-days: 90
+        archive: false
+
+    - name: Upload individual compilation artifact 8
+      if: ${{ steps.find-artifacts.outputs.file_7 != '' }}
+      uses: actions/upload-artifact@v7
+      with:
+        path: ${{ steps.find-artifacts.outputs.file_7 }}
+        retention-days: 90
+        archive: false
+
+    - name: Upload individual compilation artifact 9
+      if: ${{ steps.find-artifacts.outputs.file_8 != '' }}
+      uses: actions/upload-artifact@v7
+      with:
+        path: ${{ steps.find-artifacts.outputs.file_8 }}
+        retention-days: 90
+        archive: false
+
+    - name: Upload individual compilation artifact 10
+      if: ${{ steps.find-artifacts.outputs.file_9 != '' }}
+      uses: actions/upload-artifact@v7
+      with:
+        path: ${{ steps.find-artifacts.outputs.file_9 }}
+        retention-days: 90
+        archive: false
