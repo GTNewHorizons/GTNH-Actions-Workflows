@@ -24,4 +24,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           path: ${{ inputs.jar_path }}
+          retention-days: 90
           archive: false
