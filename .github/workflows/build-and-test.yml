@@ -185,11 +185,11 @@ jobs:
       run: |
         mapfile -t files < <(find build/libs -maxdepth 1 -type f | sort)
 
-        if (( ${#files[@]} > 6 )); then
-          echo "::warning::Found ${#files[@]} files in build/libs, but only the first 6 will be uploaded individually."
+        if (( ${#files[@]} > 10 )); then
+          echo "::warning::Found ${#files[@]} files in build/libs, but only the first 10 will be uploaded individually."
         fi
 
-        for i in {0..5}; do
+        for i in {0..9}; do
           if [[ -n "${files[$i]:-}" ]]; then
             echo "file_${i}=${files[$i]}" >> "$GITHUB_OUTPUT"
           fi
@@ -240,5 +240,37 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         path: ${{ steps.find-artifacts.outputs.file_5 }}
+        retention-days: 90
+        archive: false
+
+    - name: Upload individual compilation artifact 7
+      if: ${{ steps.find-artifacts.outputs.file_6 != '' }}
+      uses: actions/upload-artifact@v7
+      with:
+        path: ${{ steps.find-artifacts.outputs.file_6 }}
+        retention-days: 90
+        archive: false
+
+    - name: Upload individual compilation artifact 8
+      if: ${{ steps.find-artifacts.outputs.file_7 != '' }}
+      uses: actions/upload-artifact@v7
+      with:
+        path: ${{ steps.find-artifacts.outputs.file_7 }}
+        retention-days: 90
+        archive: false
+
+    - name: Upload individual compilation artifact 9
+      if: ${{ steps.find-artifacts.outputs.file_8 != '' }}
+      uses: actions/upload-artifact@v7
+      with:
+        path: ${{ steps.find-artifacts.outputs.file_8 }}
+        retention-days: 90
+        archive: false
+
+    - name: Upload individual compilation artifact 10
+      if: ${{ steps.find-artifacts.outputs.file_9 != '' }}
+      uses: actions/upload-artifact@v7
+      with:
+        path: ${{ steps.find-artifacts.outputs.file_9 }}
         retention-days: 90
         archive: false
