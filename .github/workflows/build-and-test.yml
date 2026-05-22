@@ -183,7 +183,7 @@ jobs:
       id: find-artifacts
       shell: bash
       run: |
-        mapfile -t files < <(find build/libs -maxdepth 1 -type f | sort)
+        mapfile -t files < <(find build/libs -maxdepth 1 -type f -name '*.jar' | sort)
 
         if (( ${#files[@]} > 10 )); then
           echo "::warning::Found ${#files[@]} files in build/libs, but only the first 10 will be uploaded individually."
