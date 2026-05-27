@@ -77,7 +77,7 @@ jobs:
       if: hashFiles('./.packscripts/**') != ''
       run: |  
         echo "Aquired build artifacts from rebuild job: " && ls -lahR ./.packscripts/
-        bash scripts/upload-deps-to-localmaven.sh ./.packscripts/required_prs.json
+        bash .gtnh-workflows/scripts/upload-deps-to-localmaven.sh ./.packscripts/required_prs.json
         echo "Overriding dependencies of project with versions from local maven:" && cat ~/.gradle/init.gradle
         echo "Contents of local maven:" && ls -lahR ~/.m2/repository/com/github
 
