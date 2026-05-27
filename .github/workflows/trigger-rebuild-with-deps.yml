@@ -1,0 +1,100 @@
+name: Trigger a rebuild with externally required PRs
+
+# Note: this workflow is triggered via workflow_run, which runs in the context of the default branch.
+# Therefore we use the statuses api to place it on the source commit manually
+on:
+  workflow_run:
+    workflows: ["Build and test"]
+    types: [completed]
+
+permissions:
+  actions: write
+  contents: read
+  statuses: write
+  
+jobs:
+  trigger-rebuild-with-deps:
+    name: Apply required PRs from external repos
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'failure'
+      && github.event.workflow_run.event == 'pull_request'
+      && github.event.workflow_run.run_attempt == 1
+    steps:
+      - name: Look up PR url
+        id: lookup
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_URL=$(gh api \
+            "repos/${{ github.repository }}/commits/${{ github.event.workflow_run.head_sha }}/pulls" \
+            --jq '.[0].html_url')
+          echo "url=$PR_URL" >> $GITHUB_OUTPUT
+
+      - name: Collect required PRs
+        uses: MalTeeez/packscripts@1.4.12
+        env:
+          NO_COLOR: 1
+        with:
+          command: >
+            pr deps ${{ steps.lookup.outputs.url }}
+              --target_dir ./.packscripts/
+              --jar_suffix -dev.jar
+              --artifact_name -dev.jar
+              --artifact_name build-libs
+              --build_job "Build and test"
+              --other_allowed_owner "GTNewHorizons"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          config: https://raw.githubusercontent.com/MalTeeez/packscripts-auto-builds/refs/heads/gtnh-daily/packscripts.json
+          annotated_file: https://raw.githubusercontent.com/MalTeeez/packscripts-auto-builds/refs/heads/gtnh-daily/annotated_mods.json
+
+      - name: Check if deps were collected
+        id: check-deps
+        run: |
+          if [ -n "$(ls -A ./.packscripts/ 2>/dev/null)" ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Mark status pending on PR commit
+        if: steps.check-deps.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api -X POST \
+            repos/${{ github.repository }}/statuses/${{ github.event.workflow_run.head_sha }} \
+            -f state="pending" \
+            -f context="Trigger rebuild with deps" \
+            -f description="Applying external PR deps and rebuilding…" \
+            -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+      - name: Upload external deps artifact
+        if: steps.check-deps.outputs.found == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          # Named after the triggering run ID so the rerun can find it by its own run_id.
+          # workflow_run always runs in the default branch context, so artifacts would otherwise
+          # be filed under master's head_sha instead of the PR's, making them invisible to the rerun.
+          name: external-deps-${{ github.event.workflow_run.id }}
+          path: ./.packscripts/
+          include-hidden-files: true
+
+      - name: Rerun failed build
+        if: steps.check-deps.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api -X POST \
+            repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/rerun-failed-jobs
+
+      - name: Report final status to PR commit
+        if: always() && steps.check-deps.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api -X POST \
+            repos/${{ github.repository }}/statuses/${{ github.event.workflow_run.head_sha }} \
+            -f state="${{ job.status }}" \
+            -f context="Trigger rebuild with deps" \
+            -f description="External PR deps applied; rebuild triggered" \
+            -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

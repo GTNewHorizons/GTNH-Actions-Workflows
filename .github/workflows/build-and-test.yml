@@ -51,6 +51,36 @@ jobs:
         path: .gtnh-workflows
         fetch-depth: 0
 
+    - name: Find external-deps artifact for this run
+      id: find-artifact
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # The artifact is named after this run's ID because try-rebuild-with-deps runs in the
+        # master context; filtering by head_sha would never match the PR's SHA (I tried).
+        # Reruns keep the same run_id, so this name is stable across attempts.
+        RUN_ID=$(gh api \
+          "repos/${{ github.repository }}/actions/artifacts?name=external-deps-${{ github.run_id }}" \
+          --jq ".artifacts[0].workflow_run.id")
+        echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+      
+    - name: Download external deps
+      if: steps.find-artifact.outputs.run_id != ''
+      uses: actions/download-artifact@v8
+      with:
+        name: external-deps-${{ github.run_id }}
+        path: ./.packscripts/
+        run-id: ${{ steps.find-artifact.outputs.run_id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Install external deps to local maven
+      if: hashFiles('./.packscripts/**') != ''
+      run: |  
+        echo "Aquired build artifacts from rebuild job: " && ls -lahR ./.packscripts/
+        bash scripts/upload-deps-to-localmaven.sh ./.packscripts/required_prs.json
+        echo "Overriding dependencies of project with versions from local maven:" && cat ~/.gradle/init.gradle
+        echo "Contents of local maven:" && ls -lahR ~/.m2/repository/com/github
+
     - name: Determine JDK versions
       id: list-jdk-versions
       shell: bash
