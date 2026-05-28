@@ -14,3 +14,4 @@ jobs:
 #      timeout: 150
 #      workspace: setupDecompWorkspace
 #      client-only: false
+#      disable-server-auto-stop: false
