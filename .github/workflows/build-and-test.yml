@@ -21,6 +21,11 @@ on:
         required: false
         default: false
         type: boolean
+      disable-server-auto-stop:
+        description: 'Do not automatically stop runServer by writing "stop" to stdin'
+        required: false
+        default: false
+        type: boolean
       disable-spotless-pr:
         description: 'Do not run spotless PR task'
         required: false
@@ -141,8 +146,13 @@ jobs:
         # Set a constant seed with a village at spawn
         echo "level-seed=-6202107849386030209\nonline-mode=true\n" > run/server.properties
         echo "level-seed=-6202107849386030209\nonline-mode=true\n" > run/server/server.properties
-        echo "stop" > run/stop.txt
-        timeout ${{ inputs.timeout }} ./gradlew --build-cache --info --stacktrace runServer 2>&1 < run/stop.txt | tee -a server.log || true
+
+        server_stdin=/dev/null
+        if [[ "${{ inputs.disable-server-auto-stop }}" != "true" ]]; then
+          echo "stop" > run/stop.txt
+          server_stdin=run/stop.txt
+        fi
+        timeout ${{ inputs.timeout }} ./gradlew --build-cache --info --stacktrace runServer 2>&1 < "${server_stdin}" | tee -a server.log || true
 
     - name: Test no errors reported during server run
       if: ${{ !inputs.client-only }}
