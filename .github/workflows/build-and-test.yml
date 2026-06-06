@@ -67,7 +67,8 @@ jobs:
     - name: Checkout workflows repo
       uses: actions/checkout@v5
       with:
-        repository: GTNewHorizons/GTNH-Actions-Workflows
+        repository: ${{ job.workflow_repository }}
+        ref: ${{ job.workflow_sha }}
         path: .gtnh-workflows
         fetch-depth: 0
 
