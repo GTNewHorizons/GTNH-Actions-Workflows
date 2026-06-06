@@ -171,17 +171,22 @@ jobs:
         gradle_args=(--build-cache --info --stacktrace runServer)
 
         if [[ "${HORIZONQA}" == "true" ]]; then
-          mc_jvm_args="-Dhorizonqa.mode=ci -Dhorizonqa.reportDir=${GITHUB_WORKSPACE}/build/horizonqa"
+          horizonqa_jvm_args=(
+            "-Dhorizonqa.mode=ci"
+            "-Dhorizonqa.reportDir=${GITHUB_WORKSPACE}/build/horizonqa"
+          )
 
           if [[ -n "${HORIZONQA_TESTS}" ]]; then
-            mc_jvm_args="${mc_jvm_args} -Dhorizonqa.tests=${HORIZONQA_TESTS}"
+            horizonqa_jvm_args+=("-Dhorizonqa.tests=${HORIZONQA_TESTS}")
           fi
 
           if [[ "${HORIZONQA_ALLOW_NO_TESTS}" == "true" ]]; then
-            mc_jvm_args="${mc_jvm_args} -Dhorizonqa.allowNoTests=true"
+            horizonqa_jvm_args+=("-Dhorizonqa.allowNoTests=true")
           fi
 
-          gradle_args+=(--mcJvmArgs="${mc_jvm_args}")
+          for jvm_arg in "${horizonqa_jvm_args[@]}"; do
+            gradle_args+=(--mcJvmArgs="${jvm_arg}")
+          done
         fi
 
         server_stdin=/dev/null
