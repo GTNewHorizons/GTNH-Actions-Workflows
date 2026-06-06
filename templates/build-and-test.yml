@@ -15,3 +15,6 @@ jobs:
 #      workspace: setupDecompWorkspace
 #      client-only: false
 #      disable-server-auto-stop: false
+#      horizonqa: true
+#      horizonqa-tests: ''
+#      horizonqa-allow-no-tests: false
