@@ -8,10 +8,6 @@ on:
 
 jobs:
   build-and-test:
-#    permissions:
-#      contents: write
-#      pull-requests: write
-#      checks: write
     uses: GTNewHorizons/GTNH-Actions-Workflows/.github/workflows/build-and-test.yml@master
     secrets: inherit
 #    with:
