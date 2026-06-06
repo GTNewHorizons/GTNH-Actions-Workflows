@@ -8,6 +8,10 @@ on:
 
 jobs:
   build-and-test:
+#    permissions:
+#      contents: write
+#      pull-requests: write
+#      checks: write
     uses: GTNewHorizons/GTNH-Actions-Workflows/.github/workflows/build-and-test.yml@master
     secrets: inherit
 #    with:
@@ -15,3 +19,6 @@ jobs:
 #      workspace: setupDecompWorkspace
 #      client-only: false
 #      disable-server-auto-stop: false
+#      horizonqa: true
+#      horizonqa-tests: ''
+#      horizonqa-allow-no-tests: false

@@ -31,6 +31,21 @@ on:
         required: false
         default: false
         type: boolean
+      horizonqa:
+        description: 'Run Horizon-QA in CI mode during runServer'
+        required: false
+        default: false
+        type: boolean
+      horizonqa-tests:
+        description: 'Optional -Dhorizonqa.tests selector'
+        required: false
+        default: ''
+        type: string
+      horizonqa-allow-no-tests:
+        description: 'Allow Horizon-QA CI to pass with no discovered tests'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -139,6 +154,12 @@ jobs:
 
     - name: Run server for up to ${{ inputs.timeout }} seconds
       if: ${{ !inputs.client-only }}
+      shell: bash
+      env:
+        HORIZONQA: ${{ inputs.horizonqa }}
+        HORIZONQA_TESTS: ${{ inputs.horizonqa-tests }}
+        HORIZONQA_ALLOW_NO_TESTS: ${{ inputs.horizonqa-allow-no-tests }}
+        DISABLE_SERVER_AUTO_STOP: ${{ inputs.disable-server-auto-stop }}
       run: |
         mkdir -p run/server
         echo "eula=true" > run/eula.txt
@@ -147,12 +168,218 @@ jobs:
         echo "level-seed=-6202107849386030209\nonline-mode=true\n" > run/server.properties
         echo "level-seed=-6202107849386030209\nonline-mode=true\n" > run/server/server.properties
 
+        gradle_args=(--build-cache --info --stacktrace runServer)
+
+        if [[ "${HORIZONQA}" == "true" ]]; then
+          mc_jvm_args="-Dhorizonqa.mode=ci -Dhorizonqa.reportDir=${GITHUB_WORKSPACE}/build/horizonqa"
+
+          if [[ -n "${HORIZONQA_TESTS}" ]]; then
+            mc_jvm_args="${mc_jvm_args} -Dhorizonqa.tests=${HORIZONQA_TESTS}"
+          fi
+
+          if [[ "${HORIZONQA_ALLOW_NO_TESTS}" == "true" ]]; then
+            mc_jvm_args="${mc_jvm_args} -Dhorizonqa.allowNoTests=true"
+          fi
+
+          gradle_args+=(--mcJvmArgs="${mc_jvm_args}")
+        fi
+
         server_stdin=/dev/null
-        if [[ "${{ inputs.disable-server-auto-stop }}" != "true" ]]; then
+        if [[ "${DISABLE_SERVER_AUTO_STOP}" != "true" && "${HORIZONQA}" != "true" ]]; then
           echo "stop" > run/stop.txt
           server_stdin=run/stop.txt
         fi
-        timeout ${{ inputs.timeout }} ./gradlew --build-cache --info --stacktrace runServer 2>&1 < "${server_stdin}" | tee -a server.log || true
+        timeout ${{ inputs.timeout }} ./gradlew "${gradle_args[@]}" 2>&1 < "${server_stdin}" | tee -a server.log || true
+
+    - name: Attach Horizon-QA reports
+      if: ${{ always() && !inputs.client-only && inputs.horizonqa }}
+      uses: actions/upload-artifact@v7
+      continue-on-error: true
+      with:
+        name: ${{ github.repository_id }}-horizonqa
+        path: build/horizonqa/
+        retention-days: 90
+
+    - name: Summarize Horizon-QA result
+      if: ${{ always() && !inputs.client-only && inputs.horizonqa }}
+      shell: bash
+      continue-on-error: true
+      run: |
+        status="${GITHUB_WORKSPACE}/build/horizonqa/horizonqa-result.json"
+
+        if [[ ! -f "$status" ]]; then
+          {
+            echo "## Horizon-QA"
+            echo
+            echo "No Horizon-QA status report was produced."
+          } >> "${GITHUB_STEP_SUMMARY}"
+          exit 0
+        fi
+
+        python3 - "$status" >> "${GITHUB_STEP_SUMMARY}" <<'PY'
+        import json
+        import sys
+
+        def cell(value):
+            return str(value if value is not None else "").replace("|", "\\|").replace("\n", " ")
+
+        with open(sys.argv[1], encoding="utf-8") as f:
+            result = json.load(f)
+
+        counts = result.get("counts", {})
+        tests = result.get("tests", [])
+        issues = result.get("issues", [])
+        non_passing = [test for test in tests if test.get("status") != "passed"]
+
+        selected = counts.get("selectedTests", len(tests))
+        passed = counts.get("passed", 0)
+        status = result.get("status", "unknown")
+        exit_code = result.get("exitCode", 2)
+
+        print("## Horizon-QA")
+        print()
+        print(f"**Status:** `{status}` (`exitCode={exit_code}`)")
+        print()
+        print("| Metric | Count |")
+        print("|---|---:|")
+        print(f"| Selected | {selected} |")
+        print(f"| Passed | {passed} |")
+        print(f"| Required failures | {counts.get('requiredFailures', 0)} |")
+        print(f"| Optional failures | {counts.get('optionalFailures', 0)} |")
+        print(f"| Infrastructure issues | {counts.get('diagnosticErrors', 0)} |")
+        print(f"| JUnit failures | {counts.get('junitFailures', 0)} |")
+        print(f"| JUnit errors | {counts.get('junitErrors', 0)} |")
+        print(f"| JUnit skipped | {counts.get('junitSkipped', 0)} |")
+
+        if non_passing:
+            print()
+            print("### Non-passing tests")
+            print()
+            print("| Test | Status | Required | Message |")
+            print("|---|---|---:|---|")
+            for test in non_passing[:25]:
+                failure = test.get("failure") or {}
+                print(
+                    f"| `{cell(test.get('id'))}` | `{cell(test.get('status'))}` | "
+                    f"{cell(test.get('required'))} | {cell(failure.get('message'))} |"
+                )
+            if len(non_passing) > 25:
+                print()
+                print(f"_Showing 25 of {len(non_passing)} non-passing tests._")
+
+        if issues:
+            print()
+            print("### Infrastructure issues")
+            print()
+            print("| Issue | Kind | Message |")
+            print("|---|---|---|")
+            for issue in issues[:10]:
+                print(
+                    f"| `{cell(issue.get('id'))}` | `{cell(issue.get('kind'))}` | "
+                    f"{cell(issue.get('message'))} |"
+                )
+            if len(issues) > 10:
+                print()
+                print(f"_Showing 10 of {len(issues)} issues._")
+        PY
+
+    - name: Publish Horizon-QA check
+      if: ${{ always() && !inputs.client-only && inputs.horizonqa && github.event_name == 'pull_request' }}
+      uses: actions/github-script@v8
+      continue-on-error: true
+      with:
+        script: |
+          const fs = require('fs');
+
+          const statusPath = `${process.env.GITHUB_WORKSPACE}/build/horizonqa/horizonqa-result.json`;
+          let title = 'No Horizon-QA status report was produced';
+          let summary = `Expected status report: \`${statusPath}\``;
+          let conclusion = 'failure';
+
+          if (fs.existsSync(statusPath)) {
+            const result = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
+            const counts = result.counts || {};
+            const tests = result.tests || [];
+            const issues = result.issues || [];
+            const selected = counts.selectedTests ?? tests.length;
+            const passed = counts.passed ?? tests.filter(test => test.status === 'passed').length;
+            const requiredFailures = counts.requiredFailures ?? 0;
+            const optionalFailures = counts.optionalFailures ?? 0;
+            const diagnosticErrors = counts.diagnosticErrors ?? 0;
+
+            conclusion = Number(result.exitCode ?? 2) === 0 ? 'success' : 'failure';
+            title = `${passed}/${selected} passed`;
+            if (requiredFailures) title += `, ${requiredFailures} required failed`;
+            if (optionalFailures) title += `, ${optionalFailures} optional failed`;
+            if (diagnosticErrors) title += `, ${diagnosticErrors} infrastructure issue(s)`;
+
+            const lines = [
+              `Status: **${result.status ?? 'unknown'}** (\`exitCode=${result.exitCode ?? 2}\`)`,
+              '',
+              `Passed: **${passed}/${selected}**`,
+              `Required failures: **${requiredFailures}**`,
+              `Optional failures: **${optionalFailures}**`,
+              `Infrastructure issues: **${diagnosticErrors}**`,
+            ];
+
+            const nonPassing = tests.filter(test => test.status !== 'passed').slice(0, 20);
+            if (nonPassing.length) {
+              lines.push('', '### Non-passing tests');
+              for (const test of nonPassing) {
+                const message = test.failure?.message ? ` - ${test.failure.message}` : '';
+                lines.push(`- \`${test.id}\`: ${test.status}${message}`);
+              }
+            }
+
+            if (issues.length) {
+              lines.push('', '### Infrastructure issues');
+              for (const issue of issues.slice(0, 10)) {
+                lines.push(`- \`${issue.id}\`: ${issue.message}`);
+              }
+            }
+
+            if (!nonPassing.length && !issues.length) {
+              lines.push('', 'All selected Horizon-QA tests passed.');
+            }
+
+            summary = lines.join('\n').slice(0, 65000);
+          }
+
+          await github.rest.checks.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            name: 'Horizon-QA',
+            head_sha: context.payload.pull_request.head.sha,
+            status: 'completed',
+            conclusion,
+            output: {
+              title,
+              summary,
+            },
+          });
+
+    - name: Test Horizon-QA result
+      if: ${{ always() && !inputs.client-only && inputs.horizonqa }}
+      shell: bash
+      run: |
+        status="${GITHUB_WORKSPACE}/build/horizonqa/horizonqa-result.json"
+
+        if [[ ! -f "$status" ]]; then
+          echo "::error::Horizon-QA was enabled but did not write $status"
+          exit 2
+        fi
+
+        python3 - "$status" <<'PY'
+        import json, sys
+        with open(sys.argv[1], encoding="utf-8") as f:
+            result = json.load(f)
+
+        print(
+            f"Horizon-QA status={result.get('status')} "
+            f"exitCode={result.get('exitCode')}"
+        )
+        sys.exit(int(result.get("exitCode", 2)))
+        PY
 
     - name: Test no errors reported during server run
       if: ${{ !inputs.client-only }}
