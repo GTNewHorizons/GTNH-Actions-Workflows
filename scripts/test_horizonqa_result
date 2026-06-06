@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+status="${1:-${GITHUB_WORKSPACE:-$(pwd)}/build/horizonqa/horizonqa-result.json}"
+
+if [[ ! -e "$status" ]]; then
+  echo "::error::Horizon-QA was enabled but did not write $status"
+  exit 2
+fi
+
+python3 - "$status" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as f:
+    result = json.load(f)
+
+print(
+    f"Horizon-QA status={result.get('status')} "
+    f"exitCode={result.get('exitCode')}"
+)
+sys.exit(int(result.get("exitCode", 2)))
+PY

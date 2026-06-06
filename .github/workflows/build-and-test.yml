@@ -196,7 +196,7 @@ jobs:
         fi
         timeout ${{ inputs.timeout }} ./gradlew "${gradle_args[@]}" 2>&1 < "${server_stdin}" | tee -a server.log || true
 
-    - name: Attach Horizon-QA reports
+    - name: Upload Horizon-QA reports
       if: ${{ always() && !inputs.client-only && inputs.horizonqa }}
       uses: actions/upload-artifact@v7
       continue-on-error: true
@@ -210,106 +210,15 @@ jobs:
       shell: bash
       continue-on-error: true
       run: |
-        status="${GITHUB_WORKSPACE}/build/horizonqa/horizonqa-result.json"
-
-        if [[ ! -f "$status" ]]; then
-          {
-            echo "## Horizon-QA"
-            echo
-            echo "No Horizon-QA status report was produced."
-          } >> "${GITHUB_STEP_SUMMARY}"
-          exit 0
-        fi
-
-        python3 - "$status" >> "${GITHUB_STEP_SUMMARY}" <<'PY'
-        import json
-        import sys
-
-        def cell(value):
-            return str(value if value is not None else "").replace("|", "\\|").replace("\n", " ")
-
-        with open(sys.argv[1], encoding="utf-8") as f:
-            result = json.load(f)
-
-        counts = result.get("counts", {})
-        tests = result.get("tests", [])
-        issues = result.get("issues", [])
-        non_passing = [test for test in tests if test.get("status") != "passed"]
-
-        selected = counts.get("selectedTests", len(tests))
-        passed = counts.get("passed", 0)
-        status = result.get("status", "unknown")
-        exit_code = result.get("exitCode", 2)
-
-        print("## Horizon-QA")
-        print()
-        print(f"**Status:** `{status}` (`exitCode={exit_code}`)")
-        print()
-        print("| Metric | Count |")
-        print("|---|---:|")
-        print(f"| Selected | {selected} |")
-        print(f"| Passed | {passed} |")
-        print(f"| Required failures | {counts.get('requiredFailures', 0)} |")
-        print(f"| Optional failures | {counts.get('optionalFailures', 0)} |")
-        print(f"| Infrastructure issues | {counts.get('diagnosticErrors', 0)} |")
-        print(f"| JUnit failures | {counts.get('junitFailures', 0)} |")
-        print(f"| JUnit errors | {counts.get('junitErrors', 0)} |")
-        print(f"| JUnit skipped | {counts.get('junitSkipped', 0)} |")
-
-        if non_passing:
-            print()
-            print("### Non-passing tests")
-            print()
-            print("| Test | Status | Required | Message |")
-            print("|---|---|---:|---|")
-            for test in non_passing[:25]:
-                failure = test.get("failure") or {}
-                print(
-                    f"| `{cell(test.get('id'))}` | `{cell(test.get('status'))}` | "
-                    f"{cell(test.get('required'))} | {cell(failure.get('message'))} |"
-                )
-            if len(non_passing) > 25:
-                print()
-                print(f"_Showing 25 of {len(non_passing)} non-passing tests._")
-
-        if issues:
-            print()
-            print("### Infrastructure issues")
-            print()
-            print("| Issue | Kind | Message |")
-            print("|---|---|---|")
-            for issue in issues[:10]:
-                print(
-                    f"| `{cell(issue.get('id'))}` | `{cell(issue.get('kind'))}` | "
-                    f"{cell(issue.get('message'))} |"
-                )
-            if len(issues) > 10:
-                print()
-                print(f"_Showing 10 of {len(issues)} issues._")
-        PY
+        chmod +x .gtnh-workflows/scripts/summarize_horizonqa_result
+        .gtnh-workflows/scripts/summarize_horizonqa_result
 
     - name: Test Horizon-QA result
       if: ${{ always() && !inputs.client-only && inputs.horizonqa }}
       shell: bash
       run: |
-        status="${GITHUB_WORKSPACE}/build/horizonqa/horizonqa-result.json"
-
-        if [[ ! -f "$status" ]]; then
-          echo "::error::Horizon-QA was enabled but did not write $status"
-          exit 2
-        fi
-
-        python3 - "$status" <<'PY'
-        import json, sys
-        with open(sys.argv[1], encoding="utf-8") as f:
-            result = json.load(f)
-
-        print(
-            f"Horizon-QA status={result.get('status')} "
-            f"exitCode={result.get('exitCode')}"
-        )
-        sys.exit(int(result.get("exitCode", 2)))
-        PY
+        chmod +x .gtnh-workflows/scripts/test_horizonqa_result
+        .gtnh-workflows/scripts/test_horizonqa_result
 
     - name: Test no errors reported during server run
       if: ${{ !inputs.client-only }}
