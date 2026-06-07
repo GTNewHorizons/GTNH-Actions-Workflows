@@ -215,18 +215,19 @@ jobs:
         chmod +x .gtnh-workflows/scripts/summarize_horizonqa_result
         .gtnh-workflows/scripts/summarize_horizonqa_result
 
-    - name: Test Horizon-QA result
-      if: ${{ always() && !inputs.client-only && inputs.horizonqa && steps.run_server.conclusion != 'skipped' }}
-      shell: bash
-      run: |
-        chmod +x .gtnh-workflows/scripts/test_horizonqa_result
-        .gtnh-workflows/scripts/test_horizonqa_result
-
     - name: Test no errors reported during server run
+      id: server_errors
       if: ${{ !inputs.client-only }}
       run: |
         chmod +x .gtnh-workflows/scripts/test_no_error_reports
         .gtnh-workflows/scripts/test_no_error_reports
+
+    - name: Test Horizon-QA result
+      if: ${{ always() && !inputs.client-only && inputs.horizonqa && steps.run_server.conclusion != 'skipped' && steps.server_errors.conclusion == 'success' }}
+      shell: bash
+      run: |
+        chmod +x .gtnh-workflows/scripts/test_horizonqa_result
+        .gtnh-workflows/scripts/test_horizonqa_result
 
     - name: Test no prerelease dependencies used
       run: |
