@@ -64,10 +64,23 @@ jobs:
       image: ghcr.io/malteeez/gtnh-daily:latest
     env:
       PR_URL: ${{ needs.get-pr-url.outputs.pr_url }}
+      SERVER_DIR: /home/gtnh
+      RUN_DIR: /home/gtnh
+      SERVER_EXIT_FLAG: /home/gtnh/server.exit
     steps:
+      - name: Checkout workflows repo
+        uses: actions/checkout@v7
+        with:
+          repository: GTNewHorizons/GTNH-Actions-Workflows
+          ref: master
+          sparse-checkout: 
+            scripts/
+          path: .gtnh-workflows
+          fetch-depth: 0
+
       - name: Install libc so we can run our binary on alpine
         run: apk add --no-cache libstdc++ libgcc
-        
+
       - name: Check out PR build artifact
         uses: MalTeeez/packscripts@1.4.12
         env:
@@ -83,9 +96,13 @@ jobs:
           working_directory: /home/gtnh
           musl: true
 
-      - name: Run pack test
+      - name: Run server
         timeout-minutes: 30
-        run: bash /entrypoint.sh
+        run: bash .gtnh-workflows/scripts/server.sh
+
+      - name: Verify server
+        if: success() || failure()
+        run: bash .gtnh-workflows/scripts/verify_server.sh
 
   report:
     needs: [get-pr-url, full-pack-test]
