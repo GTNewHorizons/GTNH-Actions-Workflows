@@ -31,6 +31,11 @@ on:
         required: false
         default: false
         type: boolean
+      external-deps-inclusion:
+        description: 'Enable usage of external dependency artifacts that might have been provided by trigger-rebuild-with-deps (if installed)'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -58,6 +63,7 @@ jobs:
 
     - name: Find external-deps artifact for this run
       id: find-artifact
+      if: ${{ inputs.external-deps-inclusion }}
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
@@ -70,7 +76,7 @@ jobs:
         echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
       
     - name: Download external deps
-      if: steps.find-artifact.outputs.run_id != ''
+      if: ${{ inputs.external-deps-inclusion }} && steps.find-artifact.outputs.run_id != ''
       uses: actions/download-artifact@v8
       with:
         name: external-deps-${{ github.run_id }}
@@ -79,7 +85,7 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Install external deps to local maven
-      if: hashFiles('./.packscripts/**') != ''
+      if: ${{ inputs.external-deps-inclusion }} && hashFiles('./.packscripts/**') != ''
       run: |  
         echo "Aquired build artifacts from rebuild job: " && ls -lahR ./.packscripts/
         bash .gtnh-workflows/scripts/upload-deps-to-localmaven.sh ./.packscripts/required_prs.json
