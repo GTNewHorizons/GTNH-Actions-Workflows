@@ -1,11 +1,10 @@
 name: Test integration in latest daily
 
-# Note: this workflow is triggered via workflow_run, which runs in the context of the default branch.
-# Therefore we use the statuses api to place it on the source commit manually
+# Note: this reusable workflow must called from a context that is triggered by a "Build and test" run (which then propagates the event)
+# That context requires workflow_run, which runs in the context of the default branch, 
+# therefore we use the statuses api to place it on the source commit manually here
 on:
-  workflow_run:
-    workflows: ["Build and test"]
-    types: [completed]
+  workflow_call:
 
 permissions:
   actions: read
