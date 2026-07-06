@@ -1,8 +1,7 @@
 name: Check state of other required PRs
 
 on:
-  pull_request:
-    branches: [ master, main, release/** ]
+  workflow_call:
 
 jobs:
     check-required-prs:
