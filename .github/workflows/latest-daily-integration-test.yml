@@ -13,7 +13,7 @@ permissions:
 
 # Key on the triggering build's head_sha so each PR head is isolated, and a
 # repaired rerun (same run_id, same head_sha, new attempt) cancels the now-stale
-# in-flight run for that head instead of racing it to post a status.
+# in-flight run for that head instead of racing it to post a status
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.workflow_run.head_sha }}
   cancel-in-progress: true
@@ -24,7 +24,7 @@ env:
 jobs:
   get-pr-url:
     runs-on: ubuntu-latest
-    # Run on ANY pull_request build completion. We branch on conclusion below;
+    # Run on ANY pull_request build completion. We branch on conclusion below
     if: github.event.workflow_run.event == 'pull_request'
     outputs:
       pr_url: ${{ steps.lookup.outputs.url }}
@@ -37,10 +37,15 @@ jobs:
         run: |
           PR_URL=$(gh api \
             "repos/${{ github.repository }}/commits/${{ github.event.workflow_run.head_sha }}/pulls" \
-            --jq '.[0].html_url')
+            --jq "[.[] | select(.head.sha == \"${{ github.event.workflow_run.head_sha }}\" and .state == \"open\")] | first | .html_url // empty")
+
+          if [ -z "$PR_URL" ]; then
+            echo "Failed to find a PR url"
+            exit 1
+          fi
           echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
 
-      # Pending only on the path where the real test is about to run.
+      # Pending only on the path where the real test is about to run
       - name: Mark status pending on PR commit
         if: github.event.workflow_run.conclusion == 'success'
         env:
@@ -55,7 +60,7 @@ jobs:
 
   full-pack-test:
     needs: get-pr-url
-    # Real test work runs ONLY on a successful build.
+    # Real test work runs ONLY on a successful build
     if: needs.get-pr-url.outputs.conclusion == 'success'
     name: Test in latest daily
     runs-on: ubuntu-latest
@@ -71,7 +76,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: GTNewHorizons/GTNH-Actions-Workflows
-          ref: master
+          ref: ${{ job.workflow_sha }}
           sparse-checkout: 
             scripts/
           path: .gtnh-workflows
@@ -81,7 +86,7 @@ jobs:
         run: apk add --no-cache libstdc++ libgcc
 
       - name: Check out PR build artifact
-        uses: MalTeeez/packscripts@1.4.12
+        uses: MalTeeez/packscripts@a89fe398d047ac9e2e165465a51096be4f9853cb
         env:
           NO_COLOR: 1
         with:
@@ -105,9 +110,9 @@ jobs:
 
   report:
     needs: [get-pr-url, full-pack-test]
-    # Always run so we can post a terminal status on every concluded build,
-    # including the failed path where full-pack-test was skipped.
-    if: always() && needs.get-pr-url.result == 'success'
+    # Post a terminal status for every pull_request build, independent of get-pr-url's
+    # result, so a superseding run always clears a stale pending on the source commit
+    if: always() && github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       # Backstop for the cancel-in-progress race on a repaired rerun. Attempt 1 and
@@ -141,13 +146,20 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          CONCL="${{ needs.get-pr-url.outputs.conclusion }}"
+          CONCL="${{ github.event.workflow_run.conclusion }}"
+          TEST_RESULT="${{ needs.full-pack-test.result }}"
           if [ "$CONCL" != "success" ]; then
             STATE="failure"
             DESC="Build failed; integration test not run"
-          else
-            STATE="${{ needs.full-pack-test.result == 'success' && 'success' || 'failure' }}"
+          elif [ "$TEST_RESULT" = "success" ]; then
+            STATE="success"
             DESC="Integration test complete"
+          elif [ "$TEST_RESULT" = "skipped" ]; then
+            STATE="error"
+            DESC="Could not resolve PR; integration test not run"
+          else
+            STATE="failure"
+            DESC="Integration test failed"
           fi
           gh api -X POST \
             "repos/${{ github.repository }}/statuses/${{ github.event.workflow_run.head_sha }}" \

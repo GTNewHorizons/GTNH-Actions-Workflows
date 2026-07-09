@@ -45,7 +45,7 @@ jq -c '.dependencies[]' $JSON_FILE | while read -r dep; do
     git checkout $COMMIT_SHA
 
     # Get coordinates
-    PROPS=$(./gradlew -q :properties 2>/dev/null)
+    PROPS=$(./gradlew -q :properties 2>/dev/null < /dev/null)
     GROUP=$(echo "$PROPS" | grep '^group:' | awk '{print $2}')
     # Gradle does not actually seem to have project name, 
     # it just takes the project folder name (in this case, the repo)
@@ -57,7 +57,7 @@ jq -c '.dependencies[]' $JSON_FILE | while read -r dep; do
     echo "Coordinates of local maven result: $GROUP:$PROJECT:$VERSION"
 
     # Generate a pom for local maven (need to do this, so we have deps included)
-    VERSION=$VERSION ./gradlew generatePomFileForMavenPublication
+    VERSION=$VERSION ./gradlew generatePomFileForMavenPublication < /dev/null
 
     # Setup local maven
     MAVEN_PATH="${GROUP//.//}/$PROJECT/$VERSION"

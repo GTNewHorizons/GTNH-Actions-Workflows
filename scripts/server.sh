@@ -6,7 +6,7 @@
 # verify_server.sh, which reads the outputs produced here (server.log and the
 # exit-code flag).
 #
-# Base logic from https://github.com/MalTeeez/packscripts-auto-builds/blob/gtnh-daily/packaging/scripts/entrypoint.sh
+# Base logic moved here from https://github.com/MalTeeez/packscripts-auto-builds/blob/gtnh-daily/packaging/scripts/entrypoint.sh
 
 set -euo pipefail
 
@@ -25,6 +25,7 @@ SERVER_JAVA_ARGS="${SERVER_JAVA_ARGS:--Xms1G -Xmx2G -Dfml.readTimeout=5 @java9ar
 
 START_TIMEOUT="${SERVER_START_TIMEOUT:-240}"
 SETTLE_DURATION="${SERVER_SETTLE_DURATION:-30}"
+STOP_TIMEOUT="${SERVER_STOP_TIMEOUT:-20}"
 
 SERVER_PID=""
 TAIL_PID=""
@@ -35,6 +36,18 @@ cleanup() {
   [ -n "$SERVER_PID" ] && kill -0 "$SERVER_PID" 2>/dev/null && kill "$SERVER_PID" 2>/dev/null
   return 0
 }
+
+stop_and_reap() {
+  ( sleep "$STOP_TIMEOUT"; kill -9 "$SERVER_PID" 2>/dev/null ) &
+  local killer=$!
+  local code=0
+  wait "$SERVER_PID" || code=$?
+  kill "$killer" 2>/dev/null
+  SERVER_PID=""
+  echo "$code" > "$SERVER_EXIT_FLAG"
+  echo "server exited with code $code"
+}
+
 trap cleanup EXIT INT TERM
 
 run() {
@@ -91,17 +104,16 @@ run() {
 
   echo "stopping server via rcon"
   rcon-cli --host "$RCON_HOST" --port "$RCON_PORT" --password "$RCON_PASSWORD" stop
+
+  stop_and_reap
 }
 
 # Run the lifecycle without aborting on a server-side failure - capturing the
 # exit code is the whole point, so verify_server.sh can judge the run.
 run || true
 
-# Reap the JVM (if it started) and persist its exit code for verify_server.sh.
+# run bailed early with the JVM still up so stop it too
 if [ -n "$SERVER_PID" ]; then
-  server_ec=0
-  wait "$SERVER_PID" || server_ec=$?
-  SERVER_PID=""
-  echo "$server_ec" > "$SERVER_EXIT_FLAG"
-  echo "server exited with code $server_ec"
+  kill "$SERVER_PID" 2>/dev/null
+  stop_and_reap
 fi

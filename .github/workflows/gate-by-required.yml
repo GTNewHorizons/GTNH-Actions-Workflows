@@ -8,7 +8,7 @@ jobs:
       runs-on: ubuntu-latest
       steps:
         - name: Check required PRs
-          uses: MalTeeez/packscripts@1.4.12
+          uses: MalTeeez/packscripts@a89fe398d047ac9e2e165465a51096be4f9853cb
           env:
               NO_COLOR: 1
           with:

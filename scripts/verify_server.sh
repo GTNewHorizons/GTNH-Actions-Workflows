@@ -13,6 +13,7 @@ RUN_DIR="${RUN_DIR:?RUN_DIR must be set}"
 SERVER_DIR="${SERVER_DIR:?SERVER_DIR must be set}"
 
 SERVER_LOG="$RUN_DIR/server.log"
+SERVER_EXIT_FLAG="${SERVER_EXIT_FLAG:-$RUN_DIR/server.exit}"
 
 rc=0
 
@@ -22,7 +23,7 @@ fail() {
   rc=1
 }
 
-# Exit code recorded by run_with_exit.sh when the JVM stopped
+# Exit code recorded by server.sh when the JVM stopped
 if [ -e "$SERVER_EXIT_FLAG" ]; then
   exit_code=$(cat "$SERVER_EXIT_FLAG")
 else

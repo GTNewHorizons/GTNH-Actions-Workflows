@@ -88,11 +88,11 @@ jobs:
         # Reruns keep the same run_id, so this name is stable across attempts.
         RUN_ID=$(gh api \
           "repos/${{ github.repository }}/actions/artifacts?name=external-deps-${{ github.run_id }}" \
-          --jq ".artifacts[0].workflow_run.id")
+          --jq ".artifacts[0].workflow_run.id // empty")
         echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
       
     - name: Download external deps
-      if: ${{ inputs.external-deps-inclusion }} && steps.find-artifact.outputs.run_id != ''
+      if: ${{ inputs.external-deps-inclusion && steps.find-artifact.outputs.run_id != '' }}
       uses: actions/download-artifact@v8
       with:
         name: external-deps-${{ github.run_id }}
@@ -101,7 +101,7 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Install external deps to local maven
-      if: ${{ inputs.external-deps-inclusion }} && hashFiles('./.packscripts/**') != ''
+      if: ${{ inputs.external-deps-inclusion && hashFiles('./.packscripts/**') != '' }}
       run: |  
         echo "Aquired build artifacts from rebuild job: " && ls -lahR ./.packscripts/
         bash .gtnh-workflows/scripts/upload-deps-to-localmaven.sh ./.packscripts/required_prs.json
