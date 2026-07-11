@@ -18,3 +18,4 @@ jobs:
 #      horizonqa: true
 #      horizonqa-tests: ''
 #      horizonqa-allow-no-tests: false
+#      external-deps-inclusion: true
