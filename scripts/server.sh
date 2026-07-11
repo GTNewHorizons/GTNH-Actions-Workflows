@@ -114,6 +114,6 @@ run || true
 
 # run bailed early with the JVM still up so stop it too
 if [ -n "$SERVER_PID" ]; then
-  kill "$SERVER_PID" 2>/dev/null
+  kill "$SERVER_PID" 2>/dev/null || true
   stop_and_reap
 fi
