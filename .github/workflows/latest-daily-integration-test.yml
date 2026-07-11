@@ -9,7 +9,6 @@ on:
 permissions:
   actions: read
   contents: read
-  statuses: write
 
 # Key on the triggering build's head_sha so each PR head is isolated, and a
 # repaired rerun (same run_id, same head_sha, new attempt) cancels the now-stale
@@ -23,6 +22,8 @@ env:
 
 jobs:
   get-pr-url:
+    permissions: 
+      statuses: write
     runs-on: ubuntu-latest
     # Run on ANY pull_request build completion. We branch on conclusion below
     if: github.event.workflow_run.event == 'pull_request'
@@ -109,6 +110,8 @@ jobs:
         run: bash .gtnh-workflows/scripts/verify_server.sh
 
   report:
+    permissions:
+      statuses: write
     needs: [get-pr-url, full-pack-test]
     # Post a terminal status for every pull_request build, independent of get-pr-url's
     # result, so a superseding run always clears a stale pending on the source commit
