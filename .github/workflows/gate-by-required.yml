@@ -1,0 +1,22 @@
+name: Check state of other required PRs
+
+on:
+  workflow_call:
+
+jobs:
+    check-required-prs:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Check required PRs
+          uses: MalTeeez/packscripts@a89fe398d047ac9e2e165465a51096be4f9853cb
+          env:
+              NO_COLOR: 1
+          with:
+            command: >-
+              pr gate ${{ github.event.pull_request.html_url }}
+              --build_job "Build and test"
+              --other_allowed_owner "GTNewHorizons"
+              --allow_all_merged
+            github_token: ${{ secrets.GITHUB_TOKEN }}
+            config: https://raw.githubusercontent.com/MalTeeez/packscripts-auto-builds/refs/heads/gtnh-daily/packscripts.json
+            annotated_file: https://raw.githubusercontent.com/MalTeeez/packscripts-auto-builds/refs/heads/gtnh-daily/annotated_mods.json
