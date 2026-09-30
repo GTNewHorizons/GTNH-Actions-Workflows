@@ -291,6 +291,7 @@ jobs:
         PR_NUMBER: ${{ github.event.number }}
 
     - name: Attach compilation artifacts as ZIP
+      if: ${{ !github.event.repository.private }}
       uses: actions/upload-artifact@v7
       with:
         name: ${{ github.repository_id }}-build-libs
