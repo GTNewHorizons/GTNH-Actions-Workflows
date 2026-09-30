@@ -52,6 +52,9 @@ on:
         default: false
         type: boolean
 
+env:
+  ARTIFACT_RETENTION_DAYS: ${{ github.event.repository.private && 5 || 30 }}
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -90,7 +93,7 @@ jobs:
           "repos/${{ github.repository }}/actions/artifacts?name=external-deps-${{ github.run_id }}" \
           --jq ".artifacts[0].workflow_run.id // empty")
         echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
-      
+
     - name: Download external deps
       if: ${{ inputs.external-deps-inclusion && steps.find-artifact.outputs.run_id != '' }}
       uses: actions/download-artifact@v8
@@ -99,10 +102,10 @@ jobs:
         path: ./.packscripts/
         run-id: ${{ steps.find-artifact.outputs.run_id }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
-    
+
     - name: Install external deps to local maven
       if: ${{ inputs.external-deps-inclusion && hashFiles('./.packscripts/**') != '' }}
-      run: |  
+      run: |
         echo "Aquired build artifacts from rebuild job: " && ls -lahR ./.packscripts/
         bash .gtnh-workflows/scripts/upload-deps-to-localmaven.sh ./.packscripts/required_prs.json
         echo "Overriding dependencies of project with versions from local maven:" && cat ~/.gradle/init.gradle
@@ -157,14 +160,13 @@ jobs:
       with:
         name: ${{ github.repository_id }}-reports
         path: build/reports/
-        retention-days: 90
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
 
     - name: Attempt to make a PR fixing spotless errors
       if: >-
         ${{ !inputs.disable-spotless-pr &&
         failure() && steps.build_mod.conclusion == 'failure' &&
         github.event_name == 'pull_request' &&
-        !github.event.pull_request.draft &&
         github.event.pull_request.head.repo.full_name == github.repository }}
       run: |
         git reset --hard
@@ -288,11 +290,12 @@ jobs:
         PR_NUMBER: ${{ github.event.number }}
 
     - name: Attach compilation artifacts as ZIP
+      if: ${{ !github.event.repository.private }}
       uses: actions/upload-artifact@v7
       with:
         name: ${{ github.repository_id }}-build-libs
         path: build/libs/
-        retention-days: 90
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
 
     - name: Find individual compilation artifacts
       id: find-artifacts
@@ -315,7 +318,7 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         path: ${{ steps.find-artifacts.outputs.file_0 }}
-        retention-days: 90
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         archive: false
 
     - name: Upload individual compilation artifact 2
@@ -323,7 +326,7 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         path: ${{ steps.find-artifacts.outputs.file_1 }}
-        retention-days: 90
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         archive: false
 
     - name: Upload individual compilation artifact 3
@@ -331,7 +334,7 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         path: ${{ steps.find-artifacts.outputs.file_2 }}
-        retention-days: 90
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         archive: false
 
     - name: Upload individual compilation artifact 4
@@ -339,7 +342,7 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         path: ${{ steps.find-artifacts.outputs.file_3 }}
-        retention-days: 90
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         archive: false
 
     - name: Upload individual compilation artifact 5
@@ -347,7 +350,7 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         path: ${{ steps.find-artifacts.outputs.file_4 }}
-        retention-days: 90
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         archive: false
 
     - name: Upload individual compilation artifact 6
@@ -355,7 +358,7 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         path: ${{ steps.find-artifacts.outputs.file_5 }}
-        retention-days: 90
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         archive: false
 
     - name: Upload individual compilation artifact 7
@@ -363,7 +366,7 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         path: ${{ steps.find-artifacts.outputs.file_6 }}
-        retention-days: 90
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         archive: false
 
     - name: Upload individual compilation artifact 8
@@ -371,7 +374,7 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         path: ${{ steps.find-artifacts.outputs.file_7 }}
-        retention-days: 90
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         archive: false
 
     - name: Upload individual compilation artifact 9
@@ -379,7 +382,7 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         path: ${{ steps.find-artifacts.outputs.file_8 }}
-        retention-days: 90
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         archive: false
 
     - name: Upload individual compilation artifact 10
@@ -387,5 +390,5 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         path: ${{ steps.find-artifacts.outputs.file_9 }}
-        retention-days: 90
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         archive: false
