@@ -11,17 +11,20 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 PRUNE = {'.git', '.gradle', '.gtnh-workflows'}
-MAX_SUMMARY = 45000  # chars (the text is ASCII); shared by the job summary, check run and PR comment, well under their limits
+MAX_SUMMARY = 45000  # ASCII chars; under the job summary and check run limits
 MAX_NAME = 200
-MAX_DETAIL = 4000  # chars before serialization; non-ASCII expands in the summary
-MAX_ANNOTATIONS = 10  # GitHub shows at most 10 error annotations per step
+MAX_LINE = 300  # chars
+MAX_LINES = 10  # per failure
+MAX_FAILURES = 5  # shown with output
+MAX_LISTED = 10  # GitHub shows at most 10 error annotations per step
 MARKER = '<!-- gtnh-test-results -->'
 CHECK_NAME = 'Test results'
 STATUS_CONTEXT = 'Tests'
 SLOW_FLOOR = 1.0  # seconds
 SLOW_FACTOR = 10  # x median
 OUTCOMES = ('failed', 'passed', 'skipped')
-OMITTED = '{} more not shown; see the report.html artifact.'
+HEADING = '### Test results: {}'
+OMITTED = '{} more not shown; see the report.'
 
 
 def report_dir():
@@ -129,12 +132,20 @@ def code(text):
 
 def trim(detail):
     # A blank line would end the surrounding HTML block in the markdown summary.
-    text = re.sub(r'\n\s*\n', '\n', detail.strip())
-    return text if len(text) <= MAX_DETAIL else text[:MAX_DETAIL].rstrip() + '\n...'
+    lines = [cut for cut in (line[:MAX_LINE].rstrip() for line in detail.splitlines()) if cut]
+    return '\n'.join(lines[:MAX_LINES] + ['...'] * (len(lines) > MAX_LINES))
 
 
 def short(test):
     return test['cls'].rsplit('.', 1)[-1] + ' > ' + test['name']
+
+
+def named(test):
+    return code(test['task'][:MAX_NAME]), ' ', code(short(test))
+
+
+def unreadable(error):
+    return 'Unreadable report: ', code(error[:MAX_LINE])
 
 
 def make_summary(results):
@@ -145,11 +156,11 @@ def make_summary(results):
                    el('b', str(c['failed'])) if c['failed'] else '0', f'{total_seconds(group):.1f}s']
         return markup(el('tr', el('td', label), *(el('td', n, align='right') for n in numbers)))
 
-    out = [f'### Test results: {results.title}', '', '<table>',
+    out = [HEADING.format(results.title), '', '<table>',
            markup(el('tr', *(el('th', name) for name in ('Task', 'Tests', 'Passed', 'Skipped', 'Failed', 'Time'))))]
     total = [row(el('b', 'Total'), results.tests), '</table>', '']
     room = MAX_SUMMARY - sum(len(text) + 1 for text in out + total) - len(OMITTED) - 10
-    omitted = 0
+    omitted = max(0, len(results.failures) - MAX_FAILURES)
 
     def add(*lines):
         nonlocal room, omitted
@@ -163,14 +174,22 @@ def make_summary(results):
     for task, group in results.by_task.items():
         add(row(code(task), group))
     out += total
-    for t in results.failures:
-        add(markup(el('details', el('summary', el('b', 'Failed'), ' ', code(t['task']), ' ', code(short(t))),
+    for t in results.failures[:MAX_FAILURES]:
+        add(markup(el('details', el('summary', el('b', 'Failed'), ' ', *named(t)),
                     '\n', el('pre', trim(t['detail'])), '\n')), '')
     for error in results.errors:
-        add(markup(el('p', 'Unreadable report: ', code(error[:300]))))
+        add(markup(el('p', *unreadable(error))))
     if omitted:
         out += ['', OMITTED.format(omitted)]
     return '\n'.join(out)
+
+
+def make_comment(results):
+    entries = [named(t) for t in results.failures] + [unreadable(error) for error in results.errors]
+    items = [el('li', *entry) for entry in entries[:MAX_LISTED]]
+    if len(entries) > MAX_LISTED:
+        items.append(el('li', f'and {len(entries) - MAX_LISTED} more'))
+    return HEADING.format(results.title) + ('\n\n' + markup(el('ul', *items)) if items else '')
 
 
 def source_location(test, root):
@@ -192,11 +211,11 @@ def command_escape(value, prop=False):
 
 
 def annotate(results, root):
-    for t in results.failures[:MAX_ANNOTATIONS]:
+    for t in results.failures[:MAX_LISTED]:
         path, line = source_location(t, root)
         props = dict(title=short(t), file=path, line=line)
         joined = ','.join(f'{k}={command_escape(v, True)}' for k, v in props.items() if v)
-        message = (t['detail'].strip().splitlines() or ['Test failed'])[0][:300]
+        message = (t['detail'].strip().splitlines() or ['Test failed'])[0][:MAX_LINE]
         print(f'::error {joined}::{command_escape(message)}')
 
 
@@ -206,7 +225,7 @@ def make_html(results):
         if t['outcome'] == 'failed':
             cell.append(el('details', el('pre', t['detail']), open=''))
         elif t['detail']:
-            cell.append(el('small', t['detail'].splitlines()[0][:300], **{'class': 'skipped'}))
+            cell.append(el('small', t['detail'].splitlines()[0][:MAX_LINE], **{'class': 'skipped'}))
         seconds = f'{t["seconds"]:.3f}'
         attrs = {'data-o': t['outcome'], 'data-t': seconds}
         if t['slow']:
@@ -248,6 +267,7 @@ def render():
     out = report_dir()
     out.mkdir(parents=True, exist_ok=True)
     (out / 'summary.md').write_text(summary)
+    (out / 'comment.md').write_text(make_comment(results))
     (out / 'report.html').write_text(make_html(results))
     (out / 'result.json').write_text(json.dumps(dict(title=results.title, broken=results.broken)))
     with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
@@ -274,8 +294,8 @@ def publish():
     run_url = f'{env["GITHUB_SERVER_URL"]}/{repo}/actions/runs/{env["GITHUB_RUN_ID"]}'
     links = f'[Run and logs]({run_url})'
     if env.get('REPORT_URL'):
-        links += f' - [Download report.html (all tests)]({env["REPORT_URL"]})'
-    body = links + '\n\n' + (report_dir() / 'summary.md').read_text()
+        links += f' - [View report (all tests)]({env["REPORT_URL"]})'
+    body, short_body = (f'{links}\n\n' + (report_dir() / name).read_text() for name in ('summary.md', 'comment.md'))
     problems = []
 
     def attempt(fn, *args, **kwargs):
@@ -295,7 +315,7 @@ def publish():
             state=state, context=STATUS_CONTEXT, description=title, target_url=check_url or run_url))
         pr = env.get('PR_NUMBER')
         if pr and env.get('DISABLE_COMMENT') != 'true':
-            attempt(comment, repo, pr, sha, broken, f'{MARKER}\n{body}')
+            attempt(comment, repo, pr, sha, broken, f'{MARKER}\n{short_body}')
         if check_url:
             body += f'\n\n[Check run]({check_url})'
     with open(env['GITHUB_STEP_SUMMARY'], 'a') as step:
