@@ -11,14 +11,13 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 PRUNE = {'.git', '.gradle', '.gtnh-workflows'}
-MAX_SUMMARY = 45000  # ASCII chars; under the job summary and check run limits
+MAX_SUMMARY = 45000  # ASCII chars; under the job summary limit
 MAX_NAME = 200
 MAX_LINE = 300  # chars
 MAX_LINES = 10  # per failure
 MAX_FAILURES = 5  # shown with output
 MAX_LISTED = 10  # GitHub shows at most 10 error annotations per step
 MARKER = '<!-- gtnh-test-results -->'
-CHECK_NAME = 'Test results'
 STATUS_CONTEXT = 'Tests'
 SLOW_FLOOR = 1.0  # seconds
 SLOW_FACTOR = 10  # x median
@@ -300,24 +299,16 @@ def publish():
 
     def attempt(fn, *args, **kwargs):
         try:
-            return fn(*args, **kwargs)
+            fn(*args, **kwargs)
         except (RuntimeError, ValueError, KeyError) as exc:
             problems.append(exc)
 
-    def check():
-        return json.loads(gh('-X', 'POST', f'repos/{repo}/check-runs', body=dict(
-            name=CHECK_NAME, head_sha=sha, status='completed', conclusion=state, details_url=run_url,
-            output=dict(title=title, summary=body))))['html_url']
-
     if env['CAN_PUBLISH'] == 'true':
-        check_url = attempt(check)
         attempt(gh, '-X', 'POST', f'repos/{repo}/statuses/{sha}', body=dict(
-            state=state, context=STATUS_CONTEXT, description=title, target_url=check_url or run_url))
+            state=state, context=STATUS_CONTEXT, description=title, target_url=run_url))
         pr = env.get('PR_NUMBER')
         if pr and env.get('DISABLE_COMMENT') != 'true':
             attempt(comment, repo, pr, sha, broken, f'{MARKER}\n{short_body}')
-        if check_url:
-            body += f'\n\n[Check run]({check_url})'
     with open(env['GITHUB_STEP_SUMMARY'], 'a') as step:
         step.write(body + '\n')
 

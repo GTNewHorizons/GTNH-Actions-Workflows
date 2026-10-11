@@ -181,7 +181,7 @@ jobs:
       run: python3 .gtnh-workflows/scripts/test_results.py publish
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # Fork PRs get a read-only token: job summary only, no check run, status or comment
+        # Fork PRs get a read-only token: job summary only, no status or comment
         CAN_PUBLISH: ${{ !github.event.pull_request || github.event.pull_request.head.repo.full_name == github.repository }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
         REPORT_URL: ${{ steps.test_report.outputs.artifact-url }}

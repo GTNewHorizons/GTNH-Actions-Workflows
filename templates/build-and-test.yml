@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-and-test:
-    # Publishing test results (check run, commit status, PR comment) needs checks, statuses and pull-requests write
+    # Publishing test results (commit status, PR comment) needs statuses and pull-requests write
     uses: GTNewHorizons/GTNH-Actions-Workflows/.github/workflows/build-and-test.yml@master
     secrets: inherit
 #    with:
