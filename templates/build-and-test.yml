@@ -8,6 +8,7 @@ on:
 
 jobs:
   build-and-test:
+    # Publishing test results (check run, commit status, PR comment) needs checks, statuses and pull-requests write
     uses: GTNewHorizons/GTNH-Actions-Workflows/.github/workflows/build-and-test.yml@master
     secrets: inherit
 #    with:
@@ -16,6 +17,7 @@ jobs:
 #      client-only: false
 #      disable-server-auto-stop: false
 #      disable-spotless-pr: false
+#      disable-test-comment: false
 #      horizonqa: true
 #      horizonqa-tests: ''
 #      horizonqa-allow-no-tests: false

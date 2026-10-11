@@ -31,6 +31,11 @@ on:
         required: false
         default: false
         type: boolean
+      disable-test-comment:
+        description: 'Do not create or update the PR test-results comment'
+        required: false
+        default: false
+        type: boolean
       horizonqa:
         description: 'Run Horizon-QA in CI mode during runServer'
         required: false
@@ -54,6 +59,7 @@ on:
 
 env:
   ARTIFACT_RETENTION_DAYS: ${{ github.event.repository.private && 5 || 30 }}
+  HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -154,19 +160,32 @@ jobs:
       run: xvfb-run --server-args="-screen 0 1366x768x24" ./gradlew --build-cache --info --stacktrace build
 
     - name: Summarize test results
-      if: ${{ !cancelled() && steps.build_mod.conclusion != 'skipped' && hashFiles('**/build/test-results/**/TEST-*.xml') != '' }}
-      uses: mikepenz/action-junit-report@b7b80d7ac5b1da46d6aaff9fb57ad50d8453bcb3 # v6.6.0
+      id: test_results
+      if: ${{ !cancelled() && steps.build_mod.conclusion != 'skipped' }}
+      continue-on-error: true
+      run: python3 .gtnh-workflows/scripts/test_results.py render
+
+    - name: Attach test report
+      id: test_report
+      if: ${{ !cancelled() && steps.test_results.outputs.report != '' }}
+      uses: actions/upload-artifact@v7
       continue-on-error: true
       with:
-        token: unused
-        report_paths: '**/build/test-results/**/TEST-*.xml'
-        check_name: Tests
-        skip_annotations: true
-        detailed_summary: true
-        failed_summary_logs: true
-        include_passed: false
-        include_skipped: false
-        verbose_summary: false
+        path: ${{ steps.test_results.outputs.report }}
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        archive: false
+
+    - name: Publish test results
+      if: ${{ !cancelled() && steps.test_results.outputs.report != '' }}
+      continue-on-error: true
+      run: python3 .gtnh-workflows/scripts/test_results.py publish
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Fork PRs get a read-only token: job summary only, no check run, status or comment
+        CAN_PUBLISH: ${{ !github.event.pull_request || github.event.pull_request.head.repo.full_name == github.repository }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        REPORT_URL: ${{ steps.test_report.outputs.artifact-url }}
+        DISABLE_COMMENT: ${{ inputs.disable-test-comment }}
 
     - name: Attach gradle reports
       if: failure() && steps.build_mod.conclusion == 'failure'

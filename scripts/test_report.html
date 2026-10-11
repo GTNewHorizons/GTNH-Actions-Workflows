@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Test results</title>
+<style>
+:root { color-scheme: light dark; }
+body { font: 15px system-ui, sans-serif; margin: 24px auto; max-width: 1200px; padding: 0 16px; }
+table { border-collapse: collapse; width: 100%; }
+td { padding: 8px; border-bottom: 1px solid #8884; vertical-align: top; }
+td:first-child { width: 5em; }
+td:last-child { width: 6em; text-align: right; white-space: nowrap; }
+small { display: block; opacity: .7; overflow-wrap: anywhere; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 16px 0; }
+.bar input { flex: 1; min-width: 14em; }
+button, input { font: inherit; padding: 6px 12px; border: 1px solid #8888; border-radius: 6px; background: none; color: inherit; }
+button { cursor: pointer; }
+button.on { background: #0969da; border-color: #0969da; color: #fff; }
+details.g { border: 1px solid #8884; border-radius: 6px; margin: 8px 0; padding: 0 12px; }
+details.g > summary { cursor: pointer; padding: 10px 0; }
+.passed { color: #1a7f37; }
+.failed { color: #cf222e; font-weight: 600; }
+.skipped { color: #9a6700; }
+tr[data-slow] td:last-child { color: #9a6700; font-weight: 600; }
+</style>
+<h1>Test results</h1>
+{{head}}
+<div class="bar">
+<button data-f="" class="on">All</button>
+<button data-f="failed">Failed</button>
+<button data-f="skipped">Skipped</button>
+<button data-f="passed">Passed</button>
+<button data-f="slow">Slow</button>
+<input id="q" placeholder="Search name, class or output" aria-label="Search">
+<button id="open">Expand all</button>
+<button id="close">Collapse all</button>
+</div>
+<div class="bar">
+Sort within each group:
+<button data-s="run" class="on">Run order</button>
+<button data-s="name">Name</button>
+<button data-s="slow">Slowest</button>
+</div>
+<p id="n"></p>
+{{body}}
+<script>
+const rows = [...document.querySelectorAll('tr[data-o]')];
+const groups = [...document.querySelectorAll('details.g')];
+const filters = [...document.querySelectorAll('button[data-f]')];
+const sorts = [...document.querySelectorAll('button[data-s]')];
+const failedSection = document.getElementById('failed');
+const q = document.getElementById('q');
+const shown = 'tr[data-o]:not([hidden])';
+const matches = (row, filter) => !filter || (filter === 'slow' ? 'slow' in row.dataset : row.dataset.o === filter);
+const order = {
+  run: (a, b) => a.pos - b.pos,
+  name: (a, b) => a.key < b.key ? -1 : a.key > b.key ? 1 : a.pos - b.pos,
+  slow: (a, b) => b.dataset.t - a.dataset.t || a.pos - b.pos
+};
+let active = '';
+
+// Filtering opens the groups that match and hides the rest; clearing it restores the collapsed default.
+function apply() {
+  const text = q.value.toLowerCase();
+  let count = 0;
+  for (const row of rows) {
+    row.hidden = !(matches(row, active) && row.cells[1].textContent.toLowerCase().includes(text));
+    if (!row.hidden) count++;
+  }
+  for (const group of groups) {
+    const hit = group.querySelector(shown);
+    group.hidden = !hit;
+    group.open = !!((active || text) && hit);
+  }
+  if (failedSection) failedSection.hidden = !failedSection.querySelector(shown);
+  document.getElementById('n').textContent = 'Showing ' + count + ' of ' + rows.length + ' tests';
+}
+
+rows.forEach((row, pos) => {
+  row.pos = pos;
+  row.key = row.querySelector('b').textContent.toLowerCase();
+});
+for (const button of filters) {
+  button.textContent += ' ' + rows.filter(row => matches(row, button.dataset.f)).length;
+  button.addEventListener('click', () => {
+    active = button.dataset.f;
+    for (const other of filters) other.classList.toggle('on', other === button);
+    apply();
+  });
+}
+for (const button of sorts) {
+  button.addEventListener('click', () => {
+    for (const other of sorts) other.classList.toggle('on', other === button);
+    for (const body of document.querySelectorAll('tbody')) {
+      for (const row of [...body.rows].sort(order[button.dataset.s])) body.append(row);
+    }
+  });
+}
+q.addEventListener('input', apply);
+document.getElementById('open').addEventListener('click', () => { for (const group of groups) group.open = true; });
+document.getElementById('close').addEventListener('click', () => { for (const group of groups) group.open = false; });
+apply();
+</script>
+</html>
