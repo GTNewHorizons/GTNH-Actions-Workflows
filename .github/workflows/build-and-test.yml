@@ -153,13 +153,30 @@ jobs:
       id: build_mod
       run: xvfb-run --server-args="-screen 0 1366x768x24" ./gradlew --build-cache --info --stacktrace build
 
+    - name: Summarize test results
+      if: ${{ !cancelled() && steps.build_mod.conclusion != 'skipped' && hashFiles('**/build/test-results/**/TEST-*.xml') != '' }}
+      uses: mikepenz/action-junit-report@b7b80d7ac5b1da46d6aaff9fb57ad50d8453bcb3 # v6.6.0
+      continue-on-error: true
+      with:
+        token: unused
+        report_paths: '**/build/test-results/**/TEST-*.xml'
+        check_name: Tests
+        skip_annotations: true
+        detailed_summary: true
+        failed_summary_logs: true
+        include_passed: false
+        include_skipped: false
+        verbose_summary: false
+
     - name: Attach gradle reports
       if: failure() && steps.build_mod.conclusion == 'failure'
       uses: actions/upload-artifact@v7
       continue-on-error: true
       with:
         name: ${{ github.repository_id }}-reports
-        path: build/reports/
+        path: |
+          **/build/reports/
+          **/build/test-results/**/*.xml
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
 
     - name: Attempt to make a PR fixing spotless errors
@@ -169,27 +186,14 @@ jobs:
         github.event_name == 'pull_request' &&
         github.event.pull_request.head.repo.full_name == github.repository }}
       run: |
-        git reset --hard
-        git checkout "${PR_BRANCH}"
-        ./gradlew --build-cache --info --stacktrace spotlessApply || exit 1
-        git diff --exit-code && exit 1
-        git config user.name "GitHub GTNH Actions"
-        git config user.email "<>"
-        git switch -c "${FIXED_BRANCH}"
-        git commit -am "spotlessApply"
-        git push --force-with-lease origin "${FIXED_BRANCH}"
-        gh pr create \
-          --head "${FIXED_BRANCH}" \
-          --base "${PR_BRANCH}" \
-          --title "Spotless apply for branch ${PR_BRANCH} for #${{ github.event.pull_request.number }}" \
-          --body "Automatic spotless apply to fix formatting errors, applies to PR #${{ github.event.pull_request.number }}" \
-          2>&1 | tee pr-message.log || true
-        gh pr comment "${PR_BRANCH}" -F pr-message.log || true
-      shell: bash # ensures set -eo pipefail
+        chmod +x .gtnh-workflows/scripts/spotless_fix_pr
+        .gtnh-workflows/scripts/spotless_fix_pr
+      shell: bash
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         PR_BRANCH: ${{ github.head_ref }}
         FIXED_BRANCH: ${{ github.head_ref }}-spotless-fixes
+        PR_NUMBER: ${{ github.event.pull_request.number }}
 
     - name: Run server for up to ${{ inputs.timeout }} seconds
       id: run_server
