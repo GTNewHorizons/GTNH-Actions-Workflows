@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+GRADLEW="${GRADLEW:-./gradlew}"
+
+git reset --hard
+git checkout "${PR_BRANCH}"
+
+if ! probe_output="$("${GRADLEW}" --build-cache -q help --task spotlessApply 2>&1)"; then
+  if grep -q "Task 'spotlessApply' not found" <<< "${probe_output}"; then
+    echo "spotlessApply does not exist in this build; nothing to do"
+    exit 0
+  fi
+  echo "${probe_output}"
+  echo "Could not determine whether spotlessApply exists"
+  exit 1
+fi
+
+"${GRADLEW}" --build-cache --info --stacktrace spotlessApply
+
+if git diff --exit-code; then
+  echo "spotlessApply changed nothing; no fix PR created"
+  exit 0
+fi
+
+git config user.name "GitHub GTNH Actions"
+git config user.email "<>"
+git switch -c "${FIXED_BRANCH}"
+git commit -am "spotlessApply"
+git push --force-with-lease origin "${FIXED_BRANCH}"
+gh pr create \
+  --head "${FIXED_BRANCH}" \
+  --base "${PR_BRANCH}" \
+  --title "Spotless apply for branch ${PR_BRANCH} for #${PR_NUMBER}" \
+  --body "Automatic spotless apply to fix formatting errors, applies to PR #${PR_NUMBER}" \
+  2>&1 | tee pr-message.log || true
+gh pr comment "${PR_BRANCH}" -F pr-message.log || true
