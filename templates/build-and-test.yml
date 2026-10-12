@@ -22,3 +22,5 @@ jobs:
 #      horizonqa-tests: ''
 #      horizonqa-allow-no-tests: false
 #      external-deps-inclusion: true
+#      java-distribution: temurin
+#      cache-rfg: true

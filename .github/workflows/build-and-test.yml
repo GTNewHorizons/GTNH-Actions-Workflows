@@ -56,10 +56,24 @@ on:
         required: false
         default: false
         type: boolean
+      java-distribution:
+        description: 'JDK distribution (temurin is preinstalled on the runner)'
+        required: false
+        default: 'zulu'
+        type: string
+      cache-rfg:
+        description: 'Cache the RetroFuturaGradle decompile outputs'
+        required: false
+        default: false
+        type: boolean
 
 env:
   ARTIFACT_RETENTION_DAYS: ${{ github.event.repository.private && 5 || 30 }}
   HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  RFG_CACHE_KEY: rfg-v1-
+  RFG_CACHE_PATHS: |
+    build/rfg/srg_merged_minecraft.jar
+    build/rfg/*_patched_minecraft-sources.jar*
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -136,7 +150,7 @@ jobs:
       uses: actions/setup-java@v5
       with:
         java-version: ${{ steps.list-jdk-versions.outputs.java-versions }}
-        distribution: 'zulu'
+        distribution: ${{ inputs.java-distribution }}
 
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v5
@@ -149,8 +163,30 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
+    - name: Restore the RetroFuturaGradle outputs
+      id: rfg-restore
+      if: ${{ inputs.cache-rfg }}
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ env.RFG_CACHE_PATHS }}
+        key: ${{ env.RFG_CACHE_KEY }}
+        restore-keys: ${{ env.RFG_CACHE_KEY }}
+
     - name: Setup the workspace
       run: ./gradlew --build-cache --info --stacktrace ${{ inputs.workspace }}
+
+    # Keyed on RFG's own input digests, so a stale restore reruns the chain and is saved under a new key
+    - name: Key the RetroFuturaGradle outputs
+      id: rfg-key
+      if: ${{ inputs.cache-rfg }}
+      run: echo "key=${RFG_CACHE_KEY}${{ hashFiles('build/rfg/*.inputs.sha256') }}" >> "$GITHUB_OUTPUT"
+
+    - name: Save the RetroFuturaGradle outputs
+      if: ${{ steps.rfg-key.outputs.key != env.RFG_CACHE_KEY && steps.rfg-key.outputs.key != steps.rfg-restore.outputs.cache-matched-key }}
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ env.RFG_CACHE_PATHS }}
+        key: ${{ steps.rfg-key.outputs.key }}
 
     - name: Compile the mod
       run: ./gradlew --build-cache --info --stacktrace assemble
