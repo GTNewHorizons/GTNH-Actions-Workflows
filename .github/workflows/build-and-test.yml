@@ -99,6 +99,9 @@ jobs:
         ref: ${{ job.workflow_sha }}
         path: .gtnh-workflows
         fetch-depth: 0
+    - name: Keep the workflow's own files out of git status
+      # GTNHGradle takes the mod's version from git, and these untracked paths would make it end in -dirty
+      run: printf '%s\n' /.gtnh-workflows/ /server.log >> .git/info/exclude
 
     - name: Find external-deps artifact for this run
       id: find-artifact
