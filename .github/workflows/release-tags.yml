@@ -79,13 +79,19 @@ jobs:
       - name: Build the mod
         run: ./gradlew --build-cache --info --stacktrace -PmavenPublishUrl='${{ env.MAVEN_PUBLISHING_URL }}' assemble
 
-      # Continue on error in the following steps to make sure releases still get made even if one of the methods fails
-
       - name: Delete old release if it already exists
-        run: gh release delete --yes "${RELEASE_VERSION}"
-        continue-on-error: true
+        run: |
+          if gh release view "$RELEASE_VERSION" > /dev/null; then
+            LATEST_TAG=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name) || exit 1
+            if [[ "$LATEST_TAG" != "$RELEASE_VERSION" ]]; then
+              echo "LATEST_FLAG=--latest=false" >> "$GITHUB_ENV"
+            fi
+            gh release delete --yes "$RELEASE_VERSION" || true
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Continue on error in the following steps to make sure releases still get made even if one of the methods fails
 
       - name: Release under current tag
         run: |
@@ -110,7 +116,7 @@ jobs:
               --jq ".body" > "${CHANGELOG_FILE}"
           fi
           cat "${CHANGELOG_FILE}"
-          gh release create "${RELEASE_VERSION}" -F "${CHANGELOG_FILE}" ${PRERELEASE_FLAG} ./build/libs/*.jar
+          gh release create "${RELEASE_VERSION}" -F "${CHANGELOG_FILE}" ${PRERELEASE_FLAG} ${LATEST_FLAG} ./build/libs/*.jar
         shell: bash
         continue-on-error: true
         env:
