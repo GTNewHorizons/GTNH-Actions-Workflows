@@ -5,7 +5,7 @@ on:
 
 jobs:
     check-required-prs:
-      runs-on: ubuntu-latest
+      runs-on: ubuntu-24.04
       steps:
         - name: Check required PRs
           uses: MalTeeez/packscripts@a89fe398d047ac9e2e165465a51096be4f9853cb
