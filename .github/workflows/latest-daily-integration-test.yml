@@ -23,7 +23,7 @@ env:
 
 jobs:
   get-pr-url:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # Run on ANY pull_request build completion. We branch on conclusion below
     if: github.event.workflow_run.event == 'pull_request'
     outputs:
@@ -70,7 +70,7 @@ jobs:
     # Real test work runs ONLY on a successful build
     if: needs.get-pr-url.outputs.conclusion == 'success'
     name: Test in latest daily
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     container:
       image: ghcr.io/malteeez/gtnh-daily:latest
     env:
@@ -120,7 +120,7 @@ jobs:
     # Post a terminal status for every pull_request build, independent of get-pr-url's
     # result, so a superseding run always clears a stale pending on the source commit
     if: always() && github.event.workflow_run.event == 'pull_request'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       # Backstop for the cancel-in-progress race on a repaired rerun. Attempt 1 and
       # attempt 2 of the triggering build share one run_id but differ in run_attempt,
