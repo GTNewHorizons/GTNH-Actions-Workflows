@@ -1,7 +1,7 @@
 name: Trigger a rebuild with externally required PRs
 
 # Note: this reusable workflow must called from a context that is triggered by a "Build and test" run (which then propagates the event)
-# That context requires workflow_run, which runs in the context of the default branch, 
+# That context requires workflow_run, which runs in the context of the default branch,
 # therefore we use the statuses api to place it on the source commit manually here
 on:
   workflow_call:
@@ -10,11 +10,11 @@ permissions:
   actions: write
   contents: read
   statuses: write
-  
+
 jobs:
   trigger-rebuild-with-deps:
     name: Apply required PRs from external repos
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     if: github.event.workflow_run.conclusion == 'failure'
       && github.event.workflow_run.event == 'pull_request'
       && github.event.workflow_run.run_attempt == 1

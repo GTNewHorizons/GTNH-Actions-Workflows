@@ -10,7 +10,7 @@ jobs:
     # This needs to be kept in sync with the labels being checked
     # These don't need to hold the entire label name and aren't case sensitive
     if: ${{ contains(github.event.pull_request.labels.*.name, 'Affects Balance') || contains(github.event.pull_request.labels.*.name, 'ongoing freeze') }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Label requires reviews
         uses: GTNewHorizons/label-requires-reviews-action@master
